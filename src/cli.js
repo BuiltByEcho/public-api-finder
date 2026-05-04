@@ -14,9 +14,9 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const DOMAIN_PROFILES = {
   crypto: {
     triggers: ['crypto', 'cryptocurrency', 'cryptocurrencies', 'bitcoin', 'ethereum', 'solana', 'blockchain', 'defi', 'token', 'tokens', 'coin', 'coins', 'wallet'],
-    categoryWeights: { cryptocurrency: 18, 'currency exchange': 5, finance: 3, financial: 3 },
-    boostTerms: ['crypto', 'cryptocurrency', 'bitcoin', 'ethereum', 'solana', 'blockchain', 'defi', 'token', 'coin', 'exchange', 'price', 'market', 'wallet'],
-    weakTerms: ['price', 'prices'],
+    categoryWeights: { cryptocurrency: 22, 'currency exchange': 3, finance: -4, financial: -4 },
+    boostTerms: ['crypto', 'cryptocurrency', 'bitcoin', 'ethereum', 'solana', 'blockchain', 'defi', 'token', 'coin', 'wallet'],
+    weakTerms: ['price', 'prices', 'market', 'exchange'],
   },
   finance: {
     triggers: ['stock', 'stocks', 'equity', 'equities', 'market', 'trading', 'ticker', 'tickers', 'quote', 'quotes', 'etf', 'forex', 'portfolio', 'options'],
@@ -121,7 +121,7 @@ const CURATED_APIS = [
 ];
 
 function compactName(value) { return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
-const KNOWN_BEST_NAMES = new Map(CURATED_APIS.map(api => [compactName(api.name), 8]));
+const KNOWN_BEST_NAMES = new Map(CURATED_APIS.map(api => [compactName(api.name), 15]));
 
 function detectDomains(queryTokens) {
   return Object.entries(DOMAIN_PROFILES)
@@ -137,11 +137,12 @@ function domainAdjustment(entry, queryTokens) {
   let adjustment = 0;
   for (const domain of domains) {
     const profile = DOMAIN_PROFILES[domain];
-    let categoryBoost = 0;
+    let categoryBoost = null;
     for (const [category, weight] of Object.entries(profile.categoryWeights || {})) {
-      if (cat.includes(category)) categoryBoost = Math.max(categoryBoost, weight);
+      if (cat.includes(category)) categoryBoost = categoryBoost === null ? weight : Math.max(categoryBoost, weight);
     }
-    const categoryHit = categoryBoost > 0;
+    categoryBoost = categoryBoost ?? 0;
+    const categoryHit = categoryBoost !== 0;
     const textHit = profile.boostTerms.some(t => text.includes(t));
     if (categoryHit) adjustment += categoryBoost;
     else if (textHit) adjustment += 3;
@@ -235,7 +236,7 @@ function score(entry, queryTokens) {
   if (entry.sources?.length > 1) base += 2;
   if (entry.auth === 'No') base += 1;
   if (entry.https) base += 1;
-  if (asciiRatio(entry.name) < 0.7) base -= 28;
+  if (asciiRatio(entry.name) < 0.7) base -= 60;
   else if (asciiRatio(`${entry.name || ''} ${entry.description || ''}`) < 0.65) base -= 18;
   const compactEntryName = compactName(entry.name);
   for (const [name, weight] of KNOWN_BEST_NAMES) {
@@ -438,7 +439,8 @@ function filterEntries(entries, args) {
     if (args.openapi && !e.openapiUrl) return [];
     if (args.cors && String(e.cors || '').toLowerCase() !== args.cors.toLowerCase()) return [];
     const matched = q.size ? textScore(e, q) : 1;
-    if (q.size && matched === 0) return [];
+    const domain = q.size ? domainAdjustment(e, q) : 0;
+    if (q.size && matched === 0 && domain <= 0) return [];
     const s = q.size ? score(e, q) : 1;
     if (q.size && s <= 0) return [];
     return [{ ...e, score: s + (e.sourceWeight || 0) }];
