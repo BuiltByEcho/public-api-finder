@@ -10,10 +10,10 @@ Use this skill when a task needs a public API candidate. The CLI searches multip
 ## Quick command
 
 ```bash
-npx --package public-api-finder public-api-finder "weather forecast" --no-auth --https
-npx --package public-api-finder public-api-finder "crypto prices" --category Cryptocurrency --limit 5
-npx --package public-api-finder public-api-finder "jobs" --json
-npx --package public-api-finder public-api-finder "payments" --openapi
+npx --yes --package=public-api-finder -- public-api-finder "weather forecast" --no-auth --https
+npx --yes --package=public-api-finder -- public-api-finder "crypto prices" --category Cryptocurrency --limit 5
+npx --yes --package=public-api-finder -- public-api-finder "jobs" --json
+npx --yes --package=public-api-finder -- public-api-finder "payments" --openapi
 ```
 
 If npm is unavailable, use the bundled fallback script:
