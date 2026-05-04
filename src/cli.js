@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 const SOURCE_URL = 'https://public-api-lists.github.io/public-api-lists/api/all.json';
-const CACHE_PATH = join(homedir(), '.cache', 'public-api-finder', 'all.json');
+const CACHE_PATH = process.env.PUBLIC_API_FINDER_CACHE || join(homedir(), '.cache', 'public-api-finder', 'all.json');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 function usage() {
