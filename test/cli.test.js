@@ -15,7 +15,8 @@ function fixtureCache() {
       { name: 'Open-Meteo', url: 'https://open-meteo.com/', description: 'Global weather forecast API', auth: 'No', https: true, cors: 'Yes', category: 'Weather' },
       { name: 'Coinlore', url: 'https://www.coinlore.com/cryptocurrency-data-api', description: 'Cryptocurrencies prices, volume and more', auth: 'No', https: true, cors: 'Unknown', category: 'Cryptocurrency' },
       { name: 'CoinMarketCap', url: 'https://coinmarketcap.com/api/', description: 'Cryptocurrencies Prices', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency' },
-      { name: 'Old HTTP API', url: 'http://example.test', description: 'Legacy weather data', auth: 'No', https: false, cors: 'No', category: 'Weather' }
+      { name: 'Old HTTP API', url: 'http://example.test', description: 'Legacy weather data', auth: 'No', https: false, cors: 'No', category: 'Weather' },
+      { name: 'Stripe API', url: 'https://stripe.com/docs/api', description: 'Payments API with OpenAPI schema', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Financial', openapiUrl: 'https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json', sources: ['apis-guru'] }
     ]
   }));
   return path;
@@ -55,4 +56,20 @@ test('prints helpful message for no matches', () => {
   const r = run(['zzzz-no-match']);
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /No matching public APIs found/);
+});
+
+
+test('openapi filter returns schema-backed APIs', () => {
+  const r = run(['payments', '--openapi', '--json']);
+  assert.equal(r.status, 0, r.stderr);
+  const rows = JSON.parse(r.stdout);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].name, 'Stripe API');
+  assert.match(rows[0].openapiUrl, /openapi/);
+});
+
+test('source filter narrows results', () => {
+  const r = run(['payments', '--source', 'apis-guru']);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /Stripe API/);
 });

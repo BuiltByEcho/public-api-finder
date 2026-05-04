@@ -5,7 +5,7 @@ description: Find and evaluate free/public APIs for projects, demos, agents, pro
 
 # Public API Finder
 
-Use this skill when a task needs a public API candidate. The agent-friendly path is the CLI first, then live-check docs/endpoints before coding.
+Use this skill when a task needs a public API candidate. The CLI searches multiple sources: public-api-lists, public-apis, and APIs.guru OpenAPI directory. Use the CLI first, then live-check docs/endpoints before coding.
 
 ## Quick command
 
@@ -13,6 +13,7 @@ Use this skill when a task needs a public API candidate. The agent-friendly path
 npx public-api-finder "weather forecast" --no-auth --https
 npx public-api-finder "crypto prices" --category Cryptocurrency --limit 5
 npx public-api-finder "jobs" --json
+npx public-api-finder "payments" --openapi
 ```
 
 If npm is unavailable, use the bundled fallback script:
@@ -33,6 +34,7 @@ Recommend 2-5 APIs. Include:
 - HTTPS/CORS notes
 - One caveat to verify: rate limits, pricing, docs freshness, uptime, or terms
 - Minimal example request only after checking docs/live endpoint
+- OpenAPI URL when available
 
 ## Heuristics
 

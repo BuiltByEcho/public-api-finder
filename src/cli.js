@@ -3,21 +3,27 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-const SOURCE_URL = 'https://public-api-lists.github.io/public-api-lists/api/all.json';
+const SOURCES = {
+  publicApiLists: 'https://public-api-lists.github.io/public-api-lists/api/all.json',
+  publicApisReadme: 'https://raw.githubusercontent.com/public-apis/public-apis/master/README.md',
+  apisGuru: 'https://api.apis.guru/v2/list.json',
+};
 const CACHE_PATH = process.env.PUBLIC_API_FINDER_CACHE || join(homedir(), '.cache', 'public-api-finder', 'all.json');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 function usage() {
-  console.log(`public-api-finder — find public APIs for agents and prototypes
+  console.log(`public-api-finder — multi-source public API discovery for agents
 
 Usage:
   public-api-finder <query> [options]
 
 Options:
   --category <name>  Filter by category substring
+  --source <name>    Filter by source: public-api-lists, public-apis, apis-guru
   --no-auth          Only APIs with Auth = No
   --https            Only HTTPS APIs
   --cors <value>     Filter by CORS: Yes, No, Unknown
+  --openapi          Only APIs with OpenAPI specs
   --limit <n>        Max results (default: 8)
   --json             Emit JSON
   --refresh          Refresh cache
@@ -26,7 +32,7 @@ Options:
 Examples:
   public-api-finder "weather forecast" --no-auth --https
   public-api-finder "crypto prices" --category Cryptocurrency --limit 5
-  public-api-finder "jobs" --json
+  public-api-finder "payments" --openapi --json
 `);
 }
 
@@ -40,7 +46,9 @@ function parseArgs(argv) {
     else if (a === '--https') args.https = true;
     else if (a === '--json') args.json = true;
     else if (a === '--refresh') args.refresh = true;
+    else if (a === '--openapi') args.openapi = true;
     else if (a === '--category') args.category = argv[++i] || '';
+    else if (a === '--source') args.source = argv[++i] || '';
     else if (a === '--cors') args.cors = argv[++i] || '';
     else if (a === '--limit') args.limit = Number(argv[++i] || 8);
     else parts.push(a);
@@ -59,15 +67,24 @@ function intersectionCount(a, b) {
   return n;
 }
 
-function score(entry, queryTokens) {
+function textScore(entry, queryTokens) {
   const name = tokenSet(entry.name);
   const category = tokenSet(entry.category);
   const desc = tokenSet(entry.description);
-  const all = new Set([...name, ...category, ...desc]);
+  const all = new Set([...name, ...category, ...desc, ...tokenSet(entry.provider || '')]);
   return 5 * intersectionCount(queryTokens, name)
     + 4 * intersectionCount(queryTokens, category)
     + 2 * intersectionCount(queryTokens, desc)
     + intersectionCount(queryTokens, all);
+}
+
+function score(entry, queryTokens) {
+  let base = textScore(entry, queryTokens);
+  if (entry.openapiUrl) base += 2;
+  if (entry.sources?.length > 1) base += 2;
+  if (entry.auth === 'No') base += 1;
+  if (entry.https) base += 1;
+  return base;
 }
 
 async function cacheIsFresh() {
@@ -79,28 +96,190 @@ async function cacheIsFresh() {
   }
 }
 
+async function fetchJson(url) {
+  const res = await fetch(url, { headers: { 'user-agent': 'public-api-finder/0.2' } });
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+  return res.json();
+}
+
+async function fetchText(url) {
+  const res = await fetch(url, { headers: { 'user-agent': 'public-api-finder/0.2' } });
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+  return res.text();
+}
+
+function normalizeCategory(cat) {
+  if (!cat) return 'Unknown';
+  return String(cat).replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function cleanDescription(desc) {
+  return String(desc || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/[#*_`>\[\]()]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 280);
+}
+
+function normalizeAuth(auth) {
+  const a = String(auth || 'Unknown').replace(/`/g, '').trim();
+  if (/^no$/i.test(a)) return 'No';
+  if (/api\s*key/i.test(a)) return 'apiKey';
+  if (/oauth/i.test(a)) return 'OAuth';
+  return a || 'Unknown';
+}
+
+function parsePublicApisReadme(readme) {
+  const entries = [];
+  let category = '';
+  for (const raw of readme.split('\n')) {
+    const heading = raw.match(/^###\s+(.+)/);
+    if (heading) {
+      category = heading[1].trim();
+      continue;
+    }
+    if (!raw.startsWith('| [')) continue;
+    const cells = raw.split('|').slice(1, -1).map(c => c.trim());
+    if (cells.length < 5) continue;
+    const link = cells[0].match(/\[([^\]]+)\]\(([^)]+)\)/);
+    if (!link) continue;
+    entries.push({
+      name: link[1],
+      url: link[2],
+      description: cleanDescription(cells[1]),
+      auth: normalizeAuth(cells[2]),
+      https: /^yes$/i.test(cells[3]),
+      cors: /^(yes|no|unknown)$/i.test(cells[4]) ? normalizeCategory(cells[4]) : 'Unknown',
+      category,
+      source: 'public-apis',
+      sourceWeight: 2,
+    });
+  }
+  return entries;
+}
+
+function parseApisGuru(data) {
+  const entries = [];
+  for (const [providerName, item] of Object.entries(data || {})) {
+    const version = item.versions?.[item.preferred] || Object.values(item.versions || {})[0];
+    const info = version?.info || {};
+    const origin = info['x-origin']?.[0]?.url;
+    entries.push({
+      name: info.title || providerName,
+      url: (info.contact?.url && !String(info.contact.url).startsWith('file:')) ? info.contact.url : ((origin && !String(origin).startsWith('file:')) ? origin : `https://${providerName}`),
+      description: cleanDescription(info.description || `OpenAPI definition for ${providerName}`),
+      auth: 'Unknown',
+      https: true,
+      cors: 'Unknown',
+      category: normalizeCategory(info['x-apisguru-categories']?.[0] || 'OpenAPI'),
+      source: 'apis-guru',
+      sourceWeight: 2,
+      provider: providerName,
+      openapiUrl: version?.swaggerUrl || version?.openapiUrl || origin || null,
+    });
+  }
+  return entries;
+}
+
+async function buildData() {
+  const [pal, publicApisReadme, guru] = await Promise.allSettled([
+    fetchJson(SOURCES.publicApiLists),
+    fetchText(SOURCES.publicApisReadme),
+    fetchJson(SOURCES.apisGuru),
+  ]);
+  const entries = [];
+  const sourceStatus = {};
+  if (pal.status === 'fulfilled') {
+    sourceStatus['public-api-lists'] = pal.value.entries?.length || 0;
+    entries.push(...(pal.value.entries || []).map(e => ({ ...e, auth: normalizeAuth(e.auth), source: 'public-api-lists', sourceWeight: 1 })));
+  } else sourceStatus['public-api-lists'] = `error: ${pal.reason.message}`;
+  if (publicApisReadme.status === 'fulfilled') {
+    const rows = parsePublicApisReadme(publicApisReadme.value);
+    sourceStatus['public-apis'] = rows.length;
+    entries.push(...rows);
+  } else sourceStatus['public-apis'] = `error: ${publicApisReadme.reason.message}`;
+  if (guru.status === 'fulfilled') {
+    const rows = parseApisGuru(guru.value);
+    sourceStatus['apis-guru'] = rows.length;
+    entries.push(...rows);
+  } else sourceStatus['apis-guru'] = `error: ${guru.reason.message}`;
+  return { generatedAt: new Date().toISOString(), sourceStatus, entries: dedupe(entries) };
+}
+
+function keyFor(entry) {
+  const host = String(entry.url || '').toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+  return `${String(entry.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '')}|${host}`;
+}
+
+function mergeEntry(a, b) {
+  const sources = new Set([...(a.sources || [a.source]), ...(b.sources || [b.source])].filter(Boolean));
+  return {
+    ...a,
+    description: (b.description || '').length > (a.description || '').length ? b.description : a.description,
+    auth: a.auth !== 'Unknown' ? a.auth : b.auth,
+    https: Boolean(a.https || b.https),
+    cors: a.cors !== 'Unknown' ? a.cors : b.cors,
+    category: a.category !== 'Unknown' ? a.category : b.category,
+    openapiUrl: a.openapiUrl || b.openapiUrl || null,
+    provider: a.provider || b.provider,
+    sourceWeight: (a.sourceWeight || 0) + (b.sourceWeight || 0),
+    sources: [...sources],
+  };
+}
+
+function dedupe(entries) {
+  const map = new Map();
+  for (const e of entries) {
+    const clean = {
+      name: e.name,
+      url: e.url,
+      description: cleanDescription(e.description),
+      auth: normalizeAuth(e.auth),
+      https: Boolean(e.https),
+      cors: e.cors || 'Unknown',
+      category: normalizeCategory(e.category),
+      source: e.source,
+      sourceWeight: e.sourceWeight || 1,
+      sources: [...(e.sources || []), e.source].filter(Boolean),
+      provider: e.provider,
+      openapiUrl: e.openapiUrl || null,
+    };
+    const key = keyFor(clean);
+    map.set(key, map.has(key) ? mergeEntry(map.get(key), clean) : clean);
+  }
+  return [...map.values()];
+}
+
 async function loadData(refresh = false) {
   if (!refresh && await cacheIsFresh()) {
-    return JSON.parse(await readFile(CACHE_PATH, 'utf8')).entries || [];
+    const cached = JSON.parse(await readFile(CACHE_PATH, 'utf8'));
+    return cached.entries || [];
   }
-  const res = await fetch(SOURCE_URL);
-  if (!res.ok) throw new Error(`failed to fetch API list: HTTP ${res.status}`);
-  const data = await res.json();
+  const data = await buildData();
   await mkdir(dirname(CACHE_PATH), { recursive: true });
   await writeFile(CACHE_PATH, JSON.stringify(data, null, 2));
   return data.entries || [];
+}
+
+function sourceMatches(entry, source) {
+  if (!source) return true;
+  return (entry.sources || [entry.source]).some(s => String(s).toLowerCase() === source.toLowerCase());
 }
 
 function filterEntries(entries, args) {
   const q = tokenSet(args.query);
   return entries.flatMap(e => {
     if (args.category && !String(e.category || '').toLowerCase().includes(args.category.toLowerCase())) return [];
+    if (args.source && !sourceMatches(e, args.source)) return [];
     if (args.noAuth && String(e.auth || '').toLowerCase() !== 'no') return [];
     if (args.https && !e.https) return [];
+    if (args.openapi && !e.openapiUrl) return [];
     if (args.cors && String(e.cors || '').toLowerCase() !== args.cors.toLowerCase()) return [];
+    const matched = q.size ? textScore(e, q) : 1;
+    if (q.size && matched === 0) return [];
     const s = q.size ? score(e, q) : 1;
-    if (q.size && s === 0) return [];
-    return [{ ...e, score: s }];
+    return [{ ...e, score: s + (e.sourceWeight || 0) }];
   }).sort((a, b) => b.score - a.score || String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name))).slice(0, args.limit);
 }
 
@@ -110,9 +289,10 @@ function printMarkdown(rows) {
     return;
   }
   rows.forEach((e, i) => {
-    console.log(`${i + 1}. **${e.name}** (${e.category}) — ${e.description}`);
+    console.log(`${i + 1}. **${e.name}** (${e.category}) — ${cleanDescription(e.description)}`);
     console.log(`   - URL: ${e.url}`);
-    console.log(`   - Auth: \`${e.auth}\` · HTTPS: ${e.https ? 'yes' : 'no'} · CORS: ${e.cors} · score: ${e.score}`);
+    console.log(`   - Auth: \`${e.auth}\` · HTTPS: ${e.https ? 'yes' : 'no'} · CORS: ${e.cors} · sources: ${((e.sources && e.sources.length) ? e.sources : [e.source || 'unknown']).join(', ')} · score: ${e.score}`);
+    if (e.openapiUrl) console.log(`   - OpenAPI: ${e.openapiUrl}`);
   });
 }
 

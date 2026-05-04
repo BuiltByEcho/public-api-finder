@@ -2,7 +2,11 @@
 
 Find free/public APIs for agents, prototypes, demos, and integrations.
 
-Powered by the curated [`public-api-lists/public-api-lists`](https://github.com/public-api-lists/public-api-lists) JSON dataset.
+Powered by multiple sources:
+
+- [`public-api-lists/public-api-lists`](https://github.com/public-api-lists/public-api-lists) for fast curated JSON discovery
+- [`public-apis/public-apis`](https://github.com/public-apis/public-apis) for the larger canonical README list
+- [`APIs-guru/openapi-directory`](https://github.com/APIs-guru/openapi-directory) for OpenAPI-backed APIs
 
 ## Quick start
 
@@ -10,6 +14,7 @@ Powered by the curated [`public-api-lists/public-api-lists`](https://github.com/
 npx public-api-finder "weather forecast" --no-auth --https
 npx public-api-finder "crypto prices" --category Cryptocurrency --limit 5
 npx public-api-finder "jobs" --json
+npx public-api-finder "payments" --openapi
 ```
 
 ## Why
@@ -30,9 +35,11 @@ The skill tells agents to prefer the CLI first, then live-check docs/endpoints b
 
 ```text
 --category <name>  Filter by category substring
+--source <name>    Filter by source: public-api-lists, public-apis, apis-guru
 --no-auth          Only APIs with Auth = No
 --https            Only HTTPS APIs
 --cors <value>     Filter by CORS: Yes, No, Unknown
+--openapi          Only APIs with OpenAPI specs
 --limit <n>        Max results
 --json             Emit JSON
 --refresh          Refresh cache
