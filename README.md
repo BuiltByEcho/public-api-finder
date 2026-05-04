@@ -2,7 +2,7 @@
 
 Find free/public APIs for agents, prototypes, demos, and integrations.
 
-Powered by multiple sources:
+Powered by multiple sources plus a curated best-known API layer:
 
 - [`public-api-lists/public-api-lists`](https://github.com/public-api-lists/public-api-lists) for fast curated JSON discovery
 - [`public-apis/public-apis`](https://github.com/public-apis/public-apis) for the larger canonical README list
@@ -35,7 +35,7 @@ The skill tells agents to prefer the CLI first, then live-check docs/endpoints b
 
 ```text
 --category <name>  Filter by category substring
---source <name>    Filter by source: public-api-lists, public-apis, apis-guru
+--source <name>    Filter by source: public-api-lists, public-apis, apis-guru, curated
 --no-auth          Only APIs with Auth = No
 --https            Only HTTPS APIs
 --cors <value>     Filter by CORS: Yes, No, Unknown

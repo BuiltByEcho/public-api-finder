@@ -5,7 +5,7 @@ description: Find and evaluate free/public APIs for projects, demos, agents, pro
 
 # Public API Finder
 
-Use this skill when a task needs a public API candidate. The CLI searches multiple sources: public-api-lists, public-apis, and APIs.guru OpenAPI directory. Use the CLI first, then live-check docs/endpoints before coding.
+Use this skill when a task needs a public API candidate. The CLI searches multiple sources: public-api-lists, public-apis, APIs.guru OpenAPI directory, and a curated best-known API layer for common domains like crypto, stocks, weather, maps, jobs, sports, media, news, government, and commerce. Use the CLI first, then live-check docs/endpoints before coding.
 
 ## Quick command
 

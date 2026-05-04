@@ -13,20 +13,115 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 const DOMAIN_PROFILES = {
   crypto: {
-    triggers: ['crypto', 'cryptocurrency', 'cryptocurrencies', 'bitcoin', 'ethereum', 'blockchain', 'defi', 'token', 'tokens', 'coin', 'coins', 'wallet'],
-    categories: ['cryptocurrency', 'currency exchange', 'finance', 'financial'],
-    categoryWeights: { cryptocurrency: 16, 'currency exchange': 5, finance: 3, financial: 3 },
-    boostTerms: ['crypto', 'cryptocurrency', 'bitcoin', 'ethereum', 'blockchain', 'defi', 'token', 'coin', 'exchange', 'price', 'market'],
+    triggers: ['crypto', 'cryptocurrency', 'cryptocurrencies', 'bitcoin', 'ethereum', 'solana', 'blockchain', 'defi', 'token', 'tokens', 'coin', 'coins', 'wallet'],
+    categoryWeights: { cryptocurrency: 18, 'currency exchange': 5, finance: 3, financial: 3 },
+    boostTerms: ['crypto', 'cryptocurrency', 'bitcoin', 'ethereum', 'solana', 'blockchain', 'defi', 'token', 'coin', 'exchange', 'price', 'market', 'wallet'],
     weakTerms: ['price', 'prices'],
   },
   finance: {
-    triggers: ['stock', 'stocks', 'equity', 'equities', 'market', 'trading', 'ticker', 'tickers', 'quote', 'quotes', 'etf', 'forex', 'portfolio'],
-    categories: ['finance', 'financial', 'currency exchange'],
-    categoryWeights: { finance: 14, financial: 14, 'currency exchange': 5 },
-    boostTerms: ['stock', 'stocks', 'equity', 'market', 'trading', 'ticker', 'quote', 'quotes', 'forex', 'portfolio'],
+    triggers: ['stock', 'stocks', 'equity', 'equities', 'market', 'trading', 'ticker', 'tickers', 'quote', 'quotes', 'etf', 'forex', 'portfolio', 'options'],
+    categoryWeights: { finance: 16, financial: 16, 'currency exchange': 5 },
+    boostTerms: ['stock', 'stocks', 'equity', 'market', 'trading', 'ticker', 'quote', 'quotes', 'forex', 'portfolio', 'options', 'historical'],
     weakTerms: ['quote', 'quotes', 'price', 'prices', 'market'],
   },
+  weather: {
+    triggers: ['weather', 'forecast', 'radar', 'temperature', 'climate', 'alerts', 'precipitation', 'hourly', 'daily'],
+    categoryWeights: { weather: 18, location: 4 },
+    boostTerms: ['weather', 'forecast', 'radar', 'temperature', 'climate', 'alerts', 'precipitation', 'meteorological'],
+    weakTerms: ['daily', 'hourly'],
+  },
+  maps: {
+    triggers: ['maps', 'map', 'geocoding', 'reverse', 'address', 'coordinates', 'places', 'routing', 'distance', 'timezone', 'location', 'navigation'],
+    categoryWeights: { geocoding: 18, location: 12, 'open data': 3 },
+    boostTerms: ['map', 'maps', 'geocoding', 'geocoder', 'reverse', 'address', 'coordinates', 'routing', 'places', 'location', 'navigation', 'timezone'],
+    weakTerms: ['location'],
+  },
+  jobs: {
+    triggers: ['jobs', 'careers', 'employment', 'hiring', 'salary', 'resume', 'remote', 'companies', 'internships', 'recruitment'],
+    categoryWeights: { jobs: 20 },
+    boostTerms: ['jobs', 'careers', 'employment', 'hiring', 'salary', 'resume', 'remote', 'recruitment'],
+    weakTerms: ['remote'],
+  },
+  sports: {
+    triggers: ['sports', 'scores', 'teams', 'leagues', 'fixtures', 'odds', 'football', 'basketball', 'baseball', 'soccer', 'standings', 'stats'],
+    categoryWeights: { 'sports & fitness': 18, entertainment: 4 },
+    boostTerms: ['sports', 'scores', 'teams', 'leagues', 'fixtures', 'odds', 'football', 'basketball', 'baseball', 'soccer', 'standings', 'stats'],
+    weakTerms: ['scores', 'stats'],
+  },
+  media: {
+    triggers: ['movies', 'movie', 'tv', 'shows', 'streaming', 'actors', 'ratings', 'posters', 'trailers', 'anime', 'imdb', 'films', 'episodes'],
+    categoryWeights: { entertainment: 16, anime: 14, media: 12, video: 8 },
+    boostTerms: ['movie', 'movies', 'tv', 'show', 'shows', 'streaming', 'actors', 'ratings', 'posters', 'trailers', 'anime', 'imdb', 'film', 'films', 'episodes'],
+    weakTerms: ['media'],
+  },
+  news: {
+    triggers: ['news', 'headlines', 'articles', 'breaking', 'media', 'newspapers', 'topics', 'politics', 'world', 'latest'],
+    categoryWeights: { news: 20, media: 6 },
+    boostTerms: ['news', 'headlines', 'articles', 'breaking', 'newspapers', 'topics', 'politics', 'world', 'latest'],
+    weakTerms: ['media', 'search'],
+  },
+  government: {
+    triggers: ['government', 'census', 'legislation', 'representatives', 'elections', 'bills', 'federal', 'agencies', 'public', 'civic'],
+    categoryWeights: { government: 18, 'open data': 10 },
+    boostTerms: ['government', 'census', 'legislation', 'representatives', 'elections', 'bills', 'federal', 'agencies', 'public data', 'civic'],
+    weakTerms: ['public', 'data'],
+  },
+  commerce: {
+    triggers: ['commerce', 'products', 'product', 'prices', 'deals', 'coupons', 'barcode', 'ecommerce', 'shopping', 'reviews', 'inventory', 'catalog', 'store'],
+    categoryWeights: { ecommerce: 18, shopping: 16, 'test data': 14, food: 10, 'food & drink': 10, 'open data': 3 },
+    boostTerms: ['commerce', 'products', 'product', 'prices', 'deals', 'coupons', 'barcode', 'ecommerce', 'shopping', 'reviews', 'inventory', 'catalog', 'store'],
+    weakTerms: ['price', 'prices'],
+  },
 };
+
+const CURATED_APIS = [
+  { name: 'CoinMarketCap', url: 'https://coinmarketcap.com/api/', description: 'Popular cryptocurrency market data, rankings, quotes, metadata, and exchange data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 5 },
+  { name: 'CoinGecko', url: 'https://www.coingecko.com/en/api', description: 'Popular cryptocurrency prices, market data, tokens, exchanges, and DeFi data.', auth: 'apiKey', https: true, cors: 'Yes', category: 'Cryptocurrency', source: 'curated', sourceWeight: 5 },
+
+  { name: 'Coinpaprika', url: 'https://api.coinpaprika.com/', description: 'Cryptocurrency prices, coins, market data, exchanges, and historical data.', auth: 'No', https: true, cors: 'Yes', category: 'Cryptocurrency', source: 'curated', sourceWeight: 5 },
+  { name: 'CoinCap', url: 'https://docs.coincap.io/', description: 'Real-time cryptocurrency prices, assets, rates, exchanges, and markets.', auth: 'No', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 5 },
+  { name: 'Coinbase', url: 'https://docs.cloud.coinbase.com/', description: 'Coinbase crypto exchange, wallet, price, account, and trading APIs.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 5 },
+  { name: 'Alpha Vantage', url: 'https://www.alphavantage.co/documentation/', description: 'Stock, ETF, forex, crypto, technical indicators, and market data API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Finance', source: 'curated', sourceWeight: 5 },
+  { name: 'Polygon', url: 'https://polygon.io/docs/', description: 'Stock market, options, forex, crypto, tickers, trades, aggregates, and historical market data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Finance', source: 'curated', sourceWeight: 5 },
+  { name: 'Twelve Data', url: 'https://twelvedata.com/docs', description: 'Stock, forex, ETF, index, and crypto market data with real-time and historical prices.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Finance', source: 'curated', sourceWeight: 5 },
+  { name: 'Tradier', url: 'https://developer.tradier.com/', description: 'US equity, options, quotes, market data, trading, and brokerage API.', auth: 'OAuth', https: true, cors: 'Yes', category: 'Finance', source: 'curated', sourceWeight: 5 },
+  { name: 'Finnhub', url: 'https://finnhub.io/docs/api', description: 'Real-time stock, forex, crypto, company fundamentals, news, and alternative market data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Finance', source: 'curated', sourceWeight: 5 },
+  { name: 'Open-Meteo', url: 'https://open-meteo.com/en/docs', description: 'Free weather forecast, historical weather, climate, geocoding, and marine weather APIs.', auth: 'No', https: true, cors: 'Yes', category: 'Weather', source: 'curated', sourceWeight: 5 },
+  { name: 'National Weather Service API', url: 'https://www.weather.gov/documentation/services-web-api', description: 'US weather alerts, forecasts, observations, radar stations, and gridpoint weather data.', auth: 'No', https: true, cors: 'Yes', category: 'Weather', source: 'curated', sourceWeight: 5 },
+  { name: 'Pirate Weather', url: 'https://pirateweather.net/en/latest/', description: 'Weather forecast API compatible with Dark Sky-style forecast data.', auth: 'No', https: true, cors: 'Yes', category: 'Weather', source: 'curated', sourceWeight: 5 },
+  { name: 'Geocod.io', url: 'https://www.geocod.io/docs/', description: 'Forward and reverse geocoding, address parsing, coordinates, and census data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
+  { name: 'GraphHopper', url: 'https://docs.graphhopper.com/', description: 'Routing, navigation, route optimization, matrix, geocoding, and map matching APIs.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
+  { name: 'GraphQL Jobs', url: 'https://graphql.jobs/docs/api/', description: 'GraphQL job listings and employment search API.', auth: 'No', https: true, cors: 'Yes', category: 'Jobs', source: 'curated', sourceWeight: 5 },
+  { name: 'Search.gov Jobs', url: 'https://search.gov/developer/jobs.html', description: 'US government job openings and federal jobs search API.', auth: 'No', https: true, cors: 'Unknown', category: 'Jobs', source: 'curated', sourceWeight: 5 },
+  { name: 'API-FOOTBALL', url: 'https://www.api-football.com/documentation-v3', description: 'Football/soccer fixtures, standings, teams, players, odds, predictions, and stats.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Sports & Fitness', source: 'curated', sourceWeight: 5 },
+  { name: 'Football-Data', url: 'https://www.football-data.org/documentation/quickstart', description: 'Football competitions, teams, fixtures, matches, standings, and scores.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Sports & Fitness', source: 'curated', sourceWeight: 5 },
+  { name: 'TVMaze', url: 'https://www.tvmaze.com/api', description: 'TV shows, episodes, schedules, cast, search, and show metadata API.', auth: 'No', https: true, cors: 'Yes', category: 'Entertainment', source: 'curated', sourceWeight: 5 },
+  { name: 'Jikan', url: 'https://docs.api.jikan.moe/', description: 'Unofficial MyAnimeList anime, manga, characters, rankings, and search API.', auth: 'No', https: true, cors: 'Yes', category: 'Anime', source: 'curated', sourceWeight: 5 },
+  { name: 'AniList', url: 'https://docs.anilist.co/', description: 'Anime and manga GraphQL API for titles, characters, studios, staff, and lists.', auth: 'OAuth', https: true, cors: 'Yes', category: 'Anime', source: 'curated', sourceWeight: 5 },
+  { name: 'GNews', url: 'https://gnews.io/docs/', description: 'News headlines, article search, topics, countries, and languages API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'News', source: 'curated', sourceWeight: 5 },
+  { name: 'Currents', url: 'https://currentsapi.services/en/docs/', description: 'Latest news, headlines, search, topics, regions, and languages API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'News', source: 'curated', sourceWeight: 5 },
+  { name: 'Data.gov', url: 'https://api.data.gov/docs/', description: 'US government API catalog and API key access for federal public data APIs.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Government', source: 'curated', sourceWeight: 5 },
+  { name: 'Open Food Facts', url: 'https://world.openfoodfacts.org/data', description: 'Food product database with barcodes, ingredients, nutrition, labels, and product metadata.', auth: 'No', https: true, cors: 'Yes', category: 'Food & Drink', source: 'curated', sourceWeight: 5 },
+  { name: 'Barcode Lookup', url: 'https://www.barcodelookup.com/api', description: 'Barcode, UPC, EAN, product lookup, catalog, pricing, images, and store product data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Shopping', source: 'curated', sourceWeight: 5 },
+  { name: 'OpenWeather', url: 'https://openweathermap.org/api', description: 'Weather forecasts, current weather, historical weather, alerts, geocoding, and maps.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Weather', source: 'curated', sourceWeight: 5 },
+  { name: 'News API', url: 'https://newsapi.org/', description: 'News headlines and article search across publishers and topics.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'News', source: 'curated', sourceWeight: 5 },
+  { name: 'The Guardian Open Platform', url: 'https://open-platform.theguardian.com/', description: 'Guardian articles, sections, tags, search, and content API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'News', source: 'curated', sourceWeight: 5 },
+  { name: 'TMDb', url: 'https://developer.themoviedb.org/docs', description: 'Movie and TV metadata, ratings, posters, images, actors, and discovery.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Entertainment', source: 'curated', sourceWeight: 5 },
+  { name: 'OMDb', url: 'https://www.omdbapi.com/', description: 'Movie and TV metadata by IMDb ID or title.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Entertainment', source: 'curated', sourceWeight: 5 },
+  { name: 'OpenStreetMap Nominatim', url: 'https://nominatim.org/release-docs/latest/api/Overview/', description: 'OpenStreetMap geocoding and reverse geocoding API.', auth: 'No', https: true, cors: 'Yes', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
+  { name: 'Mapbox', url: 'https://docs.mapbox.com/api/', description: 'Maps, geocoding, routing, navigation, tiles, and location APIs.', auth: 'apiKey', https: true, cors: 'Yes', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
+  { name: 'USAJOBS', url: 'https://developer.usajobs.gov/', description: 'US federal government job listings and hiring data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Jobs', source: 'curated', sourceWeight: 5 },
+  { name: 'Adzuna', url: 'https://developer.adzuna.com/', description: 'Job search, salary, vacancies, and employment market data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Jobs', source: 'curated', sourceWeight: 5 },
+  { name: 'TheSportsDB', url: 'https://www.thesportsdb.com/api.php', description: 'Sports teams, leagues, events, scores, players, and media.', auth: 'apiKey', https: true, cors: 'Yes', category: 'Sports & Fitness', source: 'curated', sourceWeight: 5 },
+  { name: 'balldontlie', url: 'https://www.balldontlie.io/', description: 'Basketball/NBA teams, players, games, stats, and seasons.', auth: 'No', https: true, cors: 'Yes', category: 'Sports & Fitness', source: 'curated', sourceWeight: 5 },
+  { name: 'Census Data API', url: 'https://www.census.gov/data/developers/data-sets.html', description: 'US Census datasets, demographics, geography, ACS, and economic data.', auth: 'No', https: true, cors: 'Yes', category: 'Government', source: 'curated', sourceWeight: 5 },
+  { name: 'OpenFEC', url: 'https://api.open.fec.gov/developers/', description: 'US campaign finance, candidates, committees, filings, and election data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Government', source: 'curated', sourceWeight: 5 },
+  { name: 'Fake Store API', url: 'https://fakestoreapi.com/', description: 'Fake ecommerce products, carts, users, and categories for demos and prototypes.', auth: 'No', https: true, cors: 'Yes', category: 'Shopping', source: 'curated', sourceWeight: 5 },
+  { name: 'Open Food Facts', url: 'https://world.openfoodfacts.org/data', description: 'Food product database with barcodes, ingredients, nutrition, and labels.', auth: 'No', https: true, cors: 'Yes', category: 'Food', source: 'curated', sourceWeight: 5 },
+];
+
+function compactName(value) { return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+const KNOWN_BEST_NAMES = new Map(CURATED_APIS.map(api => [compactName(api.name), 8]));
 
 function detectDomains(queryTokens) {
   return Object.entries(DOMAIN_PROFILES)
@@ -67,7 +162,7 @@ Usage:
 
 Options:
   --category <name>  Filter by category substring
-  --source <name>    Filter by source: public-api-lists, public-apis, apis-guru
+  --source <name>    Filter by source: public-api-lists, public-apis, apis-guru, curated
   --no-auth          Only APIs with Auth = No
   --https            Only HTTPS APIs
   --cors <value>     Filter by CORS: Yes, No, Unknown
@@ -126,12 +221,26 @@ function textScore(entry, queryTokens) {
     + intersectionCount(queryTokens, all);
 }
 
+function asciiRatio(value) {
+  const s = String(value || '');
+  if (!s.length) return 1;
+  let ascii = 0;
+  for (const ch of s) if (ch.charCodeAt(0) <= 127) ascii++;
+  return ascii / s.length;
+}
+
 function score(entry, queryTokens) {
   let base = textScore(entry, queryTokens);
   if (entry.openapiUrl) base += 2;
   if (entry.sources?.length > 1) base += 2;
   if (entry.auth === 'No') base += 1;
   if (entry.https) base += 1;
+  if (asciiRatio(entry.name) < 0.7) base -= 28;
+  else if (asciiRatio(`${entry.name || ''} ${entry.description || ''}`) < 0.65) base -= 18;
+  const compactEntryName = compactName(entry.name);
+  for (const [name, weight] of KNOWN_BEST_NAMES) {
+    if (compactEntryName.includes(name) || name.includes(compactEntryName)) base += weight;
+  }
   return base + domainAdjustment(entry, queryTokens);
 }
 
@@ -252,12 +361,16 @@ async function buildData() {
     sourceStatus['apis-guru'] = rows.length;
     entries.push(...rows);
   } else sourceStatus['apis-guru'] = `error: ${guru.reason.message}`;
+  sourceStatus.curated = CURATED_APIS.length;
+  entries.push(...CURATED_APIS);
   return { generatedAt: new Date().toISOString(), sourceStatus, entries: dedupe(entries) };
 }
 
 function keyFor(entry) {
+  const compact = compactName(entry.name);
+  if (KNOWN_BEST_NAMES.has(compact)) return `known:${compact}`;
   const host = String(entry.url || '').toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
-  return `${String(entry.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '')}|${host}`;
+  return `${compact}|${host}`;
 }
 
 function mergeEntry(a, b) {
