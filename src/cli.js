@@ -119,7 +119,7 @@ function cleanDescription(desc) {
     .replace(/[#*_`>\[\]()]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
-    .slice(0, 280);
+    .slice(0, 260).replace(/\s+\S{0,20}$/, '');
 }
 
 function normalizeAuth(auth) {
@@ -167,7 +167,7 @@ function parseApisGuru(data) {
     const origin = info['x-origin']?.[0]?.url;
     entries.push({
       name: info.title || providerName,
-      url: (info.contact?.url && !String(info.contact.url).startsWith('file:')) ? info.contact.url : ((origin && !String(origin).startsWith('file:')) ? origin : `https://${providerName}`),
+      url: (info.contact?.url && !String(info.contact.url).startsWith('file:')) ? info.contact.url : ((origin && !String(origin).startsWith('file:')) ? origin : (version?.swaggerUrl || version?.openapiUrl || `https://api.apis.guru/v2/specs/${providerName}/${item.preferred || 'latest'}/openapi.json`)),
       description: cleanDescription(info.description || `OpenAPI definition for ${providerName}`),
       auth: 'Unknown',
       https: true,
