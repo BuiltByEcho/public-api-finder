@@ -7,9 +7,9 @@ Powered by the curated [`public-api-lists/public-api-lists`](https://github.com/
 ## Quick start
 
 ```bash
-npx @builtbyecho/public-api-finder "weather forecast" --no-auth --https
-npx @builtbyecho/public-api-finder "crypto prices" --category Cryptocurrency --limit 5
-npx @builtbyecho/public-api-finder "jobs" --json
+npx public-api-finder "weather forecast" --no-auth --https
+npx public-api-finder "crypto prices" --category Cryptocurrency --limit 5
+npx public-api-finder "jobs" --json
 ```
 
 ## Why

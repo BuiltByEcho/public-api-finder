@@ -10,9 +10,9 @@ Use this skill when a task needs a public API candidate. The agent-friendly path
 ## Quick command
 
 ```bash
-npx @builtbyecho/public-api-finder "weather forecast" --no-auth --https
-npx @builtbyecho/public-api-finder "crypto prices" --category Cryptocurrency --limit 5
-npx @builtbyecho/public-api-finder "jobs" --json
+npx public-api-finder "weather forecast" --no-auth --https
+npx public-api-finder "crypto prices" --category Cryptocurrency --limit 5
+npx public-api-finder "jobs" --json
 ```
 
 If npm is unavailable, use the bundled fallback script:
