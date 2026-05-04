@@ -16,7 +16,8 @@ function fixtureCache() {
       { name: 'Coinlore', url: 'https://www.coinlore.com/cryptocurrency-data-api', description: 'Cryptocurrencies prices, volume and more', auth: 'No', https: true, cors: 'Unknown', category: 'Cryptocurrency' },
       { name: 'CoinMarketCap', url: 'https://coinmarketcap.com/api/', description: 'Cryptocurrencies Prices', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency' },
       { name: 'Old HTTP API', url: 'http://example.test', description: 'Legacy weather data', auth: 'No', https: false, cors: 'No', category: 'Weather' },
-      { name: 'Stripe API', url: 'https://stripe.com/docs/api', description: 'Payments API with OpenAPI schema', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Financial', openapiUrl: 'https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json', sources: ['apis-guru'] }
+      { name: 'Stripe API', url: 'https://stripe.com/docs/api', description: 'Payments API with OpenAPI schema', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Financial', openapiUrl: 'https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json', sources: ['apis-guru'] },
+      { name: 'Polygon', url: 'https://polygon.io/', description: 'Historical stock quotes and market data', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Finance', openapiUrl: 'https://api.apis.guru/v2/specs/polygon.io/1.0.0/swagger.json', sources: ['public-apis', 'apis-guru'] }
     ]
   }));
   return path;
@@ -72,4 +73,21 @@ test('source filter narrows results', () => {
   const r = run(['payments', '--source', 'apis-guru']);
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /Stripe API/);
+});
+
+
+test('finance intent does not rank generic quote APIs above finance APIs', () => {
+  const r = run(['stock quotes', '--json']);
+  assert.equal(r.status, 0, r.stderr);
+  const rows = JSON.parse(r.stdout);
+  assert.equal(rows[0].name, 'Polygon');
+  assert.equal(rows[0].category, 'Finance');
+});
+
+test('crypto intent favors cryptocurrency APIs over generic price APIs', () => {
+  const r = run(['crypto prices', '--json']);
+  assert.equal(r.status, 0, r.stderr);
+  const rows = JSON.parse(r.stdout);
+  assert.ok(rows.some(row => row.category === 'Cryptocurrency'));
+  assert.equal(rows[0].category, 'Cryptocurrency');
 });

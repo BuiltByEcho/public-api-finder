@@ -11,6 +11,54 @@ const SOURCES = {
 const CACHE_PATH = process.env.PUBLIC_API_FINDER_CACHE || join(homedir(), '.cache', 'public-api-finder', 'all.json');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
+const DOMAIN_PROFILES = {
+  crypto: {
+    triggers: ['crypto', 'cryptocurrency', 'cryptocurrencies', 'bitcoin', 'ethereum', 'blockchain', 'defi', 'token', 'tokens', 'coin', 'coins', 'wallet'],
+    categories: ['cryptocurrency', 'currency exchange', 'finance', 'financial'],
+    categoryWeights: { cryptocurrency: 16, 'currency exchange': 5, finance: 3, financial: 3 },
+    boostTerms: ['crypto', 'cryptocurrency', 'bitcoin', 'ethereum', 'blockchain', 'defi', 'token', 'coin', 'exchange', 'price', 'market'],
+    weakTerms: ['price', 'prices'],
+  },
+  finance: {
+    triggers: ['stock', 'stocks', 'equity', 'equities', 'market', 'trading', 'ticker', 'tickers', 'quote', 'quotes', 'etf', 'forex', 'portfolio'],
+    categories: ['finance', 'financial', 'currency exchange'],
+    categoryWeights: { finance: 14, financial: 14, 'currency exchange': 5 },
+    boostTerms: ['stock', 'stocks', 'equity', 'market', 'trading', 'ticker', 'quote', 'quotes', 'forex', 'portfolio'],
+    weakTerms: ['quote', 'quotes', 'price', 'prices', 'market'],
+  },
+};
+
+function detectDomains(queryTokens) {
+  return Object.entries(DOMAIN_PROFILES)
+    .filter(([, profile]) => profile.triggers.some(t => queryTokens.has(t)))
+    .map(([name]) => name);
+}
+
+function domainAdjustment(entry, queryTokens) {
+  const domains = detectDomains(queryTokens);
+  if (!domains.length) return 0;
+  const cat = String(entry.category || '').toLowerCase();
+  const text = `${entry.name || ''} ${entry.description || ''} ${entry.provider || ''}`.toLowerCase();
+  let adjustment = 0;
+  for (const domain of domains) {
+    const profile = DOMAIN_PROFILES[domain];
+    let categoryBoost = 0;
+    for (const [category, weight] of Object.entries(profile.categoryWeights || {})) {
+      if (cat.includes(category)) categoryBoost = Math.max(categoryBoost, weight);
+    }
+    const categoryHit = categoryBoost > 0;
+    const textHit = profile.boostTerms.some(t => text.includes(t));
+    if (categoryHit) adjustment += categoryBoost;
+    else if (textHit) adjustment += 3;
+    else adjustment -= 10;
+    for (const weak of profile.weakTerms) {
+      if (queryTokens.has(weak) && text.includes(weak) && !categoryHit && !textHit) adjustment -= 4;
+    }
+  }
+  return adjustment;
+}
+
+
 function usage() {
   console.log(`public-api-finder — multi-source public API discovery for agents
 
@@ -84,7 +132,7 @@ function score(entry, queryTokens) {
   if (entry.sources?.length > 1) base += 2;
   if (entry.auth === 'No') base += 1;
   if (entry.https) base += 1;
-  return base;
+  return base + domainAdjustment(entry, queryTokens);
 }
 
 async function cacheIsFresh() {
@@ -279,6 +327,7 @@ function filterEntries(entries, args) {
     const matched = q.size ? textScore(e, q) : 1;
     if (q.size && matched === 0) return [];
     const s = q.size ? score(e, q) : 1;
+    if (q.size && s <= 0) return [];
     return [{ ...e, score: s + (e.sourceWeight || 0) }];
   }).sort((a, b) => b.score - a.score || String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name))).slice(0, args.limit);
 }
