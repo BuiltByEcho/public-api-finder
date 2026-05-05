@@ -5,30 +5,30 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-function fixtureCache() {
+const BASE_ENTRIES = [
+  { name: 'Open-Meteo', url: 'https://open-meteo.com/', description: 'Global weather forecast API', auth: 'No', https: true, cors: 'Yes', category: 'Weather' },
+  { name: 'Coinlore', url: 'https://www.coinlore.com/cryptocurrency-data-api', description: 'Cryptocurrencies prices, volume and more', auth: 'No', https: true, cors: 'Unknown', category: 'Cryptocurrency' },
+  { name: 'CoinMarketCap', url: 'https://coinmarketcap.com/api/', description: 'Cryptocurrencies Prices', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency' },
+  { name: 'Old HTTP API', url: 'http://example.test', description: 'Legacy weather data', auth: 'No', https: false, cors: 'No', category: 'Weather' },
+  { name: 'Stripe API', url: 'https://stripe.com/docs/api', description: 'Payments API with OpenAPI schema', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Financial', openapiUrl: 'https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json', sources: ['apis-guru'] },
+  { name: 'Polygon', url: 'https://polygon.io/', description: 'Historical stock quotes and market data', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Finance', openapiUrl: 'https://api.apis.guru/v2/specs/polygon.io/1.0.0/swagger.json', sources: ['public-apis', 'apis-guru'] }
+];
+
+function fixtureCache(entries = BASE_ENTRIES) {
   const dir = join(tmpdir(), `public-api-finder-test-${process.pid}-${Date.now()}`);
   mkdirSync(dir, { recursive: true });
   const path = join(dir, 'all.json');
-  writeFileSync(path, JSON.stringify({
-    count: 4,
-    entries: [
-      { name: 'Open-Meteo', url: 'https://open-meteo.com/', description: 'Global weather forecast API', auth: 'No', https: true, cors: 'Yes', category: 'Weather' },
-      { name: 'Coinlore', url: 'https://www.coinlore.com/cryptocurrency-data-api', description: 'Cryptocurrencies prices, volume and more', auth: 'No', https: true, cors: 'Unknown', category: 'Cryptocurrency' },
-      { name: 'CoinMarketCap', url: 'https://coinmarketcap.com/api/', description: 'Cryptocurrencies Prices', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency' },
-      { name: 'Old HTTP API', url: 'http://example.test', description: 'Legacy weather data', auth: 'No', https: false, cors: 'No', category: 'Weather' },
-      { name: 'Stripe API', url: 'https://stripe.com/docs/api', description: 'Payments API with OpenAPI schema', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Financial', openapiUrl: 'https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json', sources: ['apis-guru'] },
-      { name: 'Polygon', url: 'https://polygon.io/', description: 'Historical stock quotes and market data', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Finance', openapiUrl: 'https://api.apis.guru/v2/specs/polygon.io/1.0.0/swagger.json', sources: ['public-apis', 'apis-guru'] }
-    ]
-  }));
+  writeFileSync(path, JSON.stringify({ count: entries.length, entries }));
   return path;
 }
 
-function run(args) {
+function run(args, entries = BASE_ENTRIES) {
   return spawnSync(process.execPath, ['src/cli.js', ...args], {
     encoding: 'utf8',
-    env: { ...process.env, PUBLIC_API_FINDER_CACHE: fixtureCache() }
+    env: { ...process.env, PUBLIC_API_FINDER_CACHE: fixtureCache(entries) }
   });
 }
+
 
 test('help prints usage', () => {
   const r = spawnSync(process.execPath, ['src/cli.js', '--help'], { encoding: 'utf8' });
@@ -90,4 +90,17 @@ test('crypto intent favors cryptocurrency APIs over generic price APIs', () => {
   const rows = JSON.parse(r.stdout);
   assert.ok(rows.some(row => row.category === 'Cryptocurrency'));
   assert.equal(rows[0].category, 'Cryptocurrency');
+});
+
+test('check annotates result reachability failures', () => {
+  const r = run(['local test api', '--check', '--json'], [
+    { name: 'Local Test API', url: 'http://127.0.0.1:9/docs', description: 'Local test api docs', auth: 'No', https: false, cors: 'Unknown', category: 'Test' }
+  ]);
+  assert.equal(r.status, 0, r.stderr);
+  const rows = JSON.parse(r.stdout);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].check.ok, false);
+  assert.equal(rows[0].check.status, null);
+  assert.equal(rows[0].check.method, 'GET');
+  assert.ok(rows[0].check.error);
 });

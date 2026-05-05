@@ -14,6 +14,7 @@ npx --yes --package=public-api-finder -- public-api-finder "weather forecast" --
 npx --yes --package=public-api-finder -- public-api-finder "crypto prices" --category Cryptocurrency --limit 5
 npx --yes --package=public-api-finder -- public-api-finder "jobs" --json
 npx --yes --package=public-api-finder -- public-api-finder "payments" --openapi
+npx --yes --package=public-api-finder -- public-api-finder "weather forecast" --no-auth --https --check
 ```
 
 If npm is unavailable, use the bundled fallback script:
@@ -40,4 +41,4 @@ Recommend 2-5 APIs. Include:
 
 Prefer APIs that are HTTPS-enabled, no-auth or simple API key, CORS `Yes` for frontend demos, well documented, and narrowly suited to the task.
 
-The curated list is not a production-readiness guarantee. Always verify before building around an API.
+The curated list is not a production-readiness guarantee. Always verify before building around an API. Use `--check` for a quick live reachability check, but still inspect docs, terms, auth, and rate limits before committing to an integration.

@@ -169,6 +169,7 @@ Options:
   --cors <value>     Filter by CORS: Yes, No, Unknown
   --openapi          Only APIs with OpenAPI specs
   --limit <n>        Max results (default: 8)
+  --check            Live-check result URLs and annotate reachability
   --json             Emit JSON
   --refresh          Refresh cache
   -h, --help         Show help
@@ -191,6 +192,7 @@ function parseArgs(argv) {
     else if (a === '--json') args.json = true;
     else if (a === '--refresh') args.refresh = true;
     else if (a === '--openapi') args.openapi = true;
+    else if (a === '--check') args.check = true;
     else if (a === '--category') args.category = argv[++i] || '';
     else if (a === '--source') args.source = argv[++i] || '';
     else if (a === '--cors') args.cors = argv[++i] || '';
@@ -447,6 +449,52 @@ function filterEntries(entries, args) {
   }).sort((a, b) => b.score - a.score || String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name))).slice(0, args.limit);
 }
 
+async function checkUrl(url, timeoutMs = 5000) {
+  const startedAt = Date.now();
+
+  for (const method of ['HEAD', 'GET']) {
+    try {
+      const res = await fetch(url, {
+        method,
+        redirect: 'follow',
+        signal: AbortSignal.timeout(timeoutMs),
+        headers: {
+          'user-agent': 'public-api-finder/0.4',
+          ...(method === 'GET' ? { range: 'bytes=0-0' } : {}),
+        },
+      });
+
+      return {
+        ok: res.ok,
+        status: res.status,
+        method,
+        finalUrl: res.url || url,
+        latencyMs: Date.now() - startedAt,
+        checkedAt: new Date().toISOString(),
+      };
+    } catch (err) {
+      if (method === 'HEAD') continue;
+      return {
+        ok: false,
+        status: null,
+        method,
+        finalUrl: url,
+        latencyMs: Date.now() - startedAt,
+        error: err.name === 'TimeoutError' ? 'timeout' : err.message,
+        checkedAt: new Date().toISOString(),
+      };
+    }
+  }
+}
+
+async function checkRows(rows) {
+  const checked = [];
+  for (const row of rows) {
+    checked.push({ ...row, check: await checkUrl(row.url) });
+  }
+  return checked;
+}
+
 function printMarkdown(rows) {
   if (!rows.length) {
     console.log('No matching public APIs found. Try broader terms or remove filters.');
@@ -457,6 +505,11 @@ function printMarkdown(rows) {
     console.log(`   - URL: ${e.url}`);
     console.log(`   - Auth: \`${e.auth}\` · HTTPS: ${e.https ? 'yes' : 'no'} · CORS: ${e.cors} · sources: ${((e.sources && e.sources.length) ? e.sources : [e.source || 'unknown']).join(', ')} · score: ${e.score}`);
     if (e.openapiUrl) console.log(`   - OpenAPI: ${e.openapiUrl}`);
+    if (e.check) {
+      const status = e.check.ok ? 'reachable' : 'not reachable';
+      const detail = e.check.status ? `HTTP ${e.check.status}` : e.check.error;
+      console.log(`   - Live check: ${status} (${detail}, ${e.check.latencyMs}ms)`);
+    }
   });
 }
 
@@ -466,7 +519,8 @@ async function main() {
     usage();
     return args.help ? 0 : 1;
   }
-  const rows = filterEntries(await loadData(args.refresh), args);
+  let rows = filterEntries(await loadData(args.refresh), args);
+  if (args.check) rows = await checkRows(rows);
   if (args.json) console.log(JSON.stringify(rows, null, 2));
   else printMarkdown(rows);
   return 0;

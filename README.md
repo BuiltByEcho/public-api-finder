@@ -15,6 +15,7 @@ npx --yes --package=public-api-finder -- public-api-finder "weather forecast" --
 npx --yes --package=public-api-finder -- public-api-finder "crypto prices" --category Cryptocurrency --limit 5
 npx --yes --package=public-api-finder -- public-api-finder "jobs" --json
 npx --yes --package=public-api-finder -- public-api-finder "payments" --openapi
+npx --yes --package=public-api-finder -- public-api-finder "weather forecast" --no-auth --https --check
 ```
 
 ## Why
@@ -29,7 +30,7 @@ The package includes an agent skill at:
 skills/public-api-finder/SKILL.md
 ```
 
-The skill tells agents to prefer the CLI first, then live-check docs/endpoints before building.
+The skill tells agents to prefer the CLI first, then live-check docs/endpoints before building. Use `--check` when you want the CLI to annotate whether each result URL is reachable right now.
 
 ## CLI options
 
@@ -41,6 +42,7 @@ The skill tells agents to prefer the CLI first, then live-check docs/endpoints b
 --cors <value>     Filter by CORS: Yes, No, Unknown
 --openapi          Only APIs with OpenAPI specs
 --limit <n>        Max results
+--check            Live-check result URLs and annotate reachability
 --json             Emit JSON
 --refresh          Refresh cache
 ```
