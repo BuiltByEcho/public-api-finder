@@ -2,6 +2,7 @@
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const SOURCES = {
   publicApiLists: 'https://public-api-lists.github.io/public-api-lists/api/all.json',
@@ -811,6 +812,24 @@ async function checkRows(rows) {
   return checked;
 }
 
+export async function searchApis(options = {}) {
+  const args = {
+    query: options.query || '',
+    category: options.category || null,
+    source: options.source || null,
+    noAuth: Boolean(options.noAuth),
+    https: Boolean(options.https),
+    openapi: Boolean(options.openapi),
+    cors: options.cors || null,
+    limit: Math.min(Math.max(Number(options.limit || 8), 1), 50),
+    check: Boolean(options.check),
+    refresh: Boolean(options.refresh),
+  };
+  let rows = filterEntries(await loadData(args.refresh), args);
+  if (args.check) rows = await checkRows(rows);
+  return rows;
+}
+
 function printMarkdown(rows) {
   if (!rows.length) {
     console.log('No matching public APIs found. Try broader terms or remove filters.');
@@ -835,14 +854,15 @@ async function main() {
     usage();
     return args.help ? 0 : 1;
   }
-  let rows = filterEntries(await loadData(args.refresh), args);
-  if (args.check) rows = await checkRows(rows);
+  let rows = await searchApis(args);
   if (args.json) console.log(JSON.stringify(rows, null, 2));
   else printMarkdown(rows);
   return 0;
 }
 
-main().then(code => process.exitCode = code).catch(err => {
-  console.error(`public-api-finder: ${err.message}`);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().then(code => process.exitCode = code).catch(err => {
+    console.error(`public-api-finder: ${err.message}`);
+    process.exitCode = 1;
+  });
+}
