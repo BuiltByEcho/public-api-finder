@@ -1,6 +1,6 @@
 {
   "name": "public-api-finder",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Find free/public APIs for agents and prototypes.",
   "type": "module",
   "bin": {
@@ -8,12 +8,14 @@
   },
   "files": [
     "src/",
+    "scripts/",
     "skills/",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "eval:quality": "node scripts/eval-quality.mjs"
   },
   "keywords": [
     "ai",

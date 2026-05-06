@@ -10,7 +10,7 @@ const SOURCES = {
 };
 const CACHE_PATH = process.env.PUBLIC_API_FINDER_CACHE || join(homedir(), '.cache', 'public-api-finder', 'all.json');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const DATA_VERSION = 4;
+const DATA_VERSION = 5;
 
 const DOMAIN_PROFILES = {
   crypto: {
@@ -30,6 +30,24 @@ const DOMAIN_PROFILES = {
     categoryWeights: { communication: 24, messaging: 24, openapi: 4, cloud: -18 },
     boostTerms: ['sms', 'messaging', 'message', 'messages', 'send text', 'twilio', 'whatsapp', 'notification', 'notifications'],
     weakTerms: ['send', 'text', 'openapi'],
+  },
+  dns: {
+    triggers: ['domain', 'domains', 'whois', 'dns', 'ssl', 'certificate', 'certificates', 'records', 'lookup'],
+    categoryWeights: { security: 22, development: 12, developer: 12, geocoding: -14, location: -10, cloud: -8 },
+    boostTerms: ['whois', 'dns', 'ssl', 'certificate', 'certificates', 'domain lookup', 'dns records', 'nameserver'],
+    weakTerms: ['lookup', 'records'],
+  },
+  qr: {
+    triggers: ['qr', 'qrcode', 'barcode', 'code', 'generation', 'generate'],
+    categoryWeights: { development: 14, developer: 14, utility: 14, tools: 14, 'test data': 6, media: -10, weather: -10 },
+    boostTerms: ['qr', 'qrcode', 'qr code', 'code generation', 'barcode'],
+    weakTerms: ['code', 'generation', 'api'],
+  },
+  urlshortener: {
+    triggers: ['shorten', 'shortener', 'shorteners', 'url', 'urls', 'links', 'branded', 'bitly'],
+    categoryWeights: { 'url shortener': 24, development: 12, developer: 12, utility: 12, analytics: -8 },
+    boostTerms: ['url shortener', 'shorten urls', 'short links', 'branded links', 'bitly', 'link analytics'],
+    weakTerms: ['links', 'analytics'],
   },
   weather: {
     triggers: ['weather', 'forecast', 'radar', 'temperature', 'climate', 'alerts', 'precipitation', 'hourly', 'daily'],
@@ -203,6 +221,9 @@ const CURATED_APIS = [
   { name: 'Stripe', url: 'https://docs.stripe.com/api', description: 'Payments, checkout, billing, invoices, subscriptions, and customer payment methods API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Payments', source: 'curated', sourceWeight: 5, openapiUrl: 'https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json' },
   { name: 'PayPal', url: 'https://developer.paypal.com/api/rest/', description: 'Payments, checkout orders, invoices, subscriptions, payouts, and disputes API.', auth: 'OAuth', https: true, cors: 'Unknown', category: 'Payments', source: 'curated', sourceWeight: 5 },
   { name: 'Twilio Messaging', url: 'https://www.twilio.com/docs/messaging/api', description: 'SMS, MMS, WhatsApp, messaging services, message status, phone numbers, and text sending API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Communication', source: 'curated', sourceWeight: 5, openapiUrl: 'https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/json/twilio_api_v2010.json' },
+  { name: 'WhoisXML API', url: 'https://main.whoisxmlapi.com/', description: 'WHOIS, DNS lookup, domain availability, SSL certificates, reverse WHOIS, and threat intelligence APIs.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Security', source: 'curated', sourceWeight: 5 },
+  { name: 'Google DNS', url: 'https://developers.google.com/speed/public-dns/docs/doh', description: 'DNS over HTTPS lookup API for DNS records, domain resolution, and public resolver queries.', auth: 'No', https: true, cors: 'Yes', category: 'Development', source: 'curated', sourceWeight: 5 },
+  { name: 'SSL Labs', url: 'https://github.com/ssllabs/ssllabs-scan/blob/master/ssllabs-api-docs-v4.md', description: 'SSL certificate and TLS configuration assessment API for domains and HTTPS endpoints.', auth: 'No', https: true, cors: 'Unknown', category: 'Security', source: 'curated', sourceWeight: 5 },
   { name: 'Abstract Email Validation', url: 'https://www.abstractapi.com/email-verification-validation-api', description: 'Email validation, deliverability, typo detection, MX records, and disposable email checks.', auth: 'apiKey', https: true, cors: 'Yes', category: 'Email', source: 'curated', sourceWeight: 5 },
   { name: 'IPinfo', url: 'https://ipinfo.io/developers', description: 'IP geolocation, ASN, company, carrier, privacy, and hosted domains data.', auth: 'No', https: true, cors: 'Unknown', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
   { name: 'IPQualityScore', url: 'https://www.ipqualityscore.com/documentation/proxy-detection-api/overview', description: 'IP reputation, VPN, proxy, TOR, bot, fraud score, privacy, and threat detection API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Security', source: 'curated', sourceWeight: 5 },
@@ -220,6 +241,10 @@ const CURATED_APIS = [
   { name: 'Calendarific', url: 'https://calendarific.com/api-documentation', description: 'Worldwide public holidays, observances, local holidays, and calendar metadata.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Calendar', source: 'curated', sourceWeight: 5 },
   { name: 'Random User Generator', url: 'https://randomuser.me/documentation', description: 'Random fake user profiles for mockups, tests, demos, placeholders, and sample data.', auth: 'No', https: true, cors: 'Yes', category: 'Test Data', source: 'curated', sourceWeight: 5 },
   { name: 'JSONPlaceholder', url: 'https://jsonplaceholder.typicode.com/', description: 'Fake REST API for posts, comments, albums, photos, todos, and users in demos and tests.', auth: 'No', https: true, cors: 'Yes', category: 'Test Data', source: 'curated', sourceWeight: 5 },
+  { name: 'QuickChart QR Code', url: 'https://quickchart.io/documentation/qr-codes/', description: 'No-auth QR code generation API for URLs, text, images, charts, and embeddable frontend demos.', auth: 'No', https: true, cors: 'Yes', category: 'Development', source: 'curated', sourceWeight: 5 },
+  { name: 'GoQR.me', url: 'https://goqr.me/api/', description: 'Free QR code generation API for creating QR images from text, URLs, and contact data.', auth: 'No', https: true, cors: 'Unknown', category: 'Development', source: 'curated', sourceWeight: 5 },
+  { name: 'Bitly', url: 'https://dev.bitly.com/', description: 'URL shortener API for branded short links, link management, redirects, QR codes, and analytics.', auth: 'OAuth', https: true, cors: 'Unknown', category: 'URL Shortener', source: 'curated', sourceWeight: 5 },
+  { name: 'TinyURL', url: 'https://tinyurl.com/app/dev', description: 'URL shortening API for creating short links, branded links, aliases, and link redirects.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'URL Shortener', source: 'curated', sourceWeight: 5 },
   { name: 'Transitland', url: 'https://www.transit.land/documentation/datastore/api-endpoints.html', description: 'Transit operators, routes, stops, schedules, GTFS feeds, and public transportation data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Transportation', source: 'curated', sourceWeight: 5 },
   { name: 'Transport API', url: 'https://www.transportapi.com/developers/documentation/', description: 'UK transport, train, bus, routes, stops, departures, and journey planning API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Transportation', source: 'curated', sourceWeight: 5 },
   { name: 'OpenFEC', url: 'https://api.open.fec.gov/developers/', description: 'US election campaign finance data including candidates, committees, donations, filings, and spending.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Open Data', source: 'curated', sourceWeight: 5 },
