@@ -1,6 +1,6 @@
 {
   "name": "public-api-finder",
-  "version": "0.4.4",
+  "version": "0.4.6",
   "description": "Find free/public APIs for agents and prototypes.",
   "type": "module",
   "bin": {

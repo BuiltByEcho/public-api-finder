@@ -10,7 +10,7 @@ const SOURCES = {
 };
 const CACHE_PATH = process.env.PUBLIC_API_FINDER_CACHE || join(homedir(), '.cache', 'public-api-finder', 'all.json');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const DATA_VERSION = 5;
+const DATA_VERSION = 8;
 
 const DOMAIN_PROFILES = {
   crypto: {
@@ -49,6 +49,66 @@ const DOMAIN_PROFILES = {
     boostTerms: ['url shortener', 'shorten urls', 'short links', 'branded links', 'bitly', 'link analytics'],
     weakTerms: ['links', 'analytics'],
   },
+  avatars: {
+    triggers: ['avatar', 'avatars', 'identicon', 'identicons', 'profile', 'pictures', 'placeholder', 'svg', 'blockies'],
+    categoryWeights: { 'test data': 18, development: 16, media: 8, cryptocurrency: -8, cloud: -18 },
+    boostTerms: ['avatar', 'avatars', 'identicon', 'identicons', 'profile pictures', 'placeholder users', 'svg avatars', 'wallet address', 'blockies'],
+    weakTerms: ['profile', 'pictures', 'placeholder'],
+  },
+  nfts: {
+    triggers: ['nft', 'nfts', 'metadata', 'contract', 'token', 'tokenid', 'erc20', 'erc721', 'erc1155', 'wallet', 'balance', 'transactions', 'transfers'],
+    categoryWeights: { cryptocurrency: 24, blockchain: 24, finance: -12, media: -12, podcasts: -18, cloud: -24 },
+    boostTerms: ['nft metadata', 'contract address', 'token id', 'wallet balance', 'erc20', 'erc721', 'erc1155', 'transactions', 'transfers', 'alchemy', 'moralis', 'etherscan'],
+    weakTerms: ['metadata', 'token', 'contract'],
+  },
+  vehicle: {
+    triggers: ['vehicle', 'vehicles', 'vin', 'recall', 'recalls', 'license', 'plate', 'nhtsa', 'car', 'cars'],
+    categoryWeights: { transportation: 22, government: 14, 'open data': 12, security: -12, 'sports & fitness': -18, 'test data': -18 },
+    boostTerms: ['vin', 'vin decode', 'vehicle', 'vehicles', 'recalls', 'safety data', 'license plate', 'nhtsa'],
+    weakTerms: ['lookup', 'data'],
+  },
+  anime: {
+    triggers: ['anime', 'manga', 'myanimelist'],
+    categoryWeights: { anime: 30, entertainment: 6, media: 4, video: -8 },
+    boostTerms: ['anime', 'manga', 'myanimelist', 'characters', 'rankings'],
+    weakTerms: ['search'],
+  },
+  images: {
+    triggers: ['image', 'images', 'photo', 'photos', 'photography', 'unsplash', 'pexels', 'pixabay', 'openverse'],
+    categoryWeights: { photography: 24, images: 24, media: 12, entertainment: 8, jobs: -12, 'test data': -12, development: -14 },
+    boostTerms: ['image search', 'photo search', 'photos', 'photography', 'unsplash', 'pexels', 'pixabay', 'openverse', 'wikimedia'],
+    weakTerms: ['search', 'free'],
+  },
+  fun: {
+    triggers: ['joke', 'jokes', 'meme', 'memes', 'cat', 'cats', 'dog', 'dogs', 'facts'],
+    categoryWeights: { entertainment: 18, animals: 24, media: 8, 'test data': -6 },
+    boostTerms: ['joke', 'jokes', 'meme', 'memes', 'quote', 'quotes', 'cat images', 'dog facts', 'random cat', 'random dog'],
+    weakTerms: ['random', 'facts'],
+  },
+  languageai: {
+    triggers: ['translation', 'translate', 'language', 'detect', 'sentiment', 'moderation', 'toxicity', 'nlp'],
+    categoryWeights: { language: 24, 'text analysis': 24, 'machine learning': 18, ai: 18, messaging: -18, cloud: -8 },
+    boostTerms: ['translation', 'translate', 'language detect', 'sentiment analysis', 'moderation', 'toxicity', 'nlp', 'text analysis', 'libretranslate', 'perspective'],
+    weakTerms: ['text', 'api'],
+  },
+  calendarapi: {
+    triggers: ['calendar', 'calendars', 'events', 'event', 'google calendar', 'oauth'],
+    categoryWeights: { calendar: 24, calendars: 24, openapi: 6, analytics: -18 },
+    boostTerms: ['calendar events', 'google calendar', 'create events', 'oauth', 'ical'],
+    weakTerms: ['events', 'create'],
+  },
+  logistics: {
+    triggers: ['package', 'packages', 'tracking', 'shipment', 'shipments', 'carrier', 'carriers', 'shipping', 'ups', 'fedex'],
+    categoryWeights: { logistics: 24, tracking: 24, commerce: 10, ecommerce: 8, development: -12, media: -12 },
+    boostTerms: ['package tracking', 'shipment tracking', 'carrier tracking', 'shipping', 'ups', 'fedex', 'aftership', 'shippo'],
+    weakTerms: ['tracking'],
+  },
+  devsec: {
+    triggers: ['cve', 'vulnerability', 'vulnerabilities', 'security', 'github', 'repo', 'repos', 'stars', 'issues', 'commits', 'npm', 'downloads', 'docker', 'registry', 'image', 'tags'],
+    categoryWeights: { security: 20, development: 18, 'open data': 10, cloud: -10, media: -12, books: -12 },
+    boostTerms: ['cve', 'vulnerability', 'vulnerabilities', 'osv', 'nvd', 'github repo', 'repo stars', 'issues', 'commits', 'npm package', 'package downloads', 'docker image', 'registry api', 'image tags'],
+    weakTerms: ['package', 'image', 'metadata'],
+  },
   weather: {
     triggers: ['weather', 'forecast', 'radar', 'temperature', 'climate', 'alerts', 'precipitation', 'hourly', 'daily'],
     categoryWeights: { weather: 18, location: 4 },
@@ -56,9 +116,9 @@ const DOMAIN_PROFILES = {
     weakTerms: ['daily', 'hourly'],
   },
   maps: {
-    triggers: ['maps', 'map', 'geocoding', 'reverse', 'address', 'coordinates', 'places', 'routing', 'distance', 'timezone', 'location', 'navigation'],
-    categoryWeights: { geocoding: 18, location: 12, 'open data': 3 },
-    boostTerms: ['map', 'maps', 'geocoding', 'geocoder', 'reverse', 'address', 'coordinates', 'routing', 'places', 'location', 'navigation', 'timezone'],
+    triggers: ['maps', 'map', 'geocoding', 'reverse', 'address', 'coordinates', 'places', 'place', 'restaurant', 'restaurants', 'nearby', 'routing', 'distance', 'timezone', 'location', 'navigation'],
+    categoryWeights: { geocoding: 18, location: 14, 'open data': 3, photography: -16, media: -8 },
+    boostTerms: ['map', 'maps', 'geocoding', 'geocoder', 'reverse', 'address', 'coordinates', 'routing', 'places', 'restaurant', 'nearby', 'opening hours', 'location', 'navigation', 'timezone'],
     weakTerms: ['location'],
   },
   jobs: {
@@ -128,7 +188,7 @@ const DOMAIN_PROFILES = {
     weakTerms: ['public', 'search'],
   },
   podcasts: {
-    triggers: ['podcast', 'podcasts', 'episode', 'episodes', 'rss', 'itunes', 'audio', 'metadata'],
+    triggers: ['podcast', 'podcasts', 'rss', 'itunes', 'audio', 'metadata'],
     categoryWeights: { podcasts: 24, media: 14, entertainment: 10, music: 8, anime: -12, video: -8, cloud: -18 },
     boostTerms: ['podcast', 'podcasts', 'episode', 'episodes', 'rss', 'itunes', 'audio', 'show metadata'],
     weakTerms: ['search', 'metadata'],
@@ -209,7 +269,8 @@ const CURATED_APIS = [
   { name: 'iTunes Search API', url: 'https://performance-partners.apple.com/search-api', description: 'No-auth podcast, music, audiobook, movie, app, and episode search metadata from Apple/iTunes.', auth: 'No', https: true, cors: 'Unknown', category: 'Media', source: 'curated', sourceWeight: 5 },
   { name: 'Listen Notes', url: 'https://www.listennotes.com/api/docs/', description: 'Podcast search, episodes, shows, RSS metadata, recommendations, and podcast directory API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Podcasts', source: 'curated', sourceWeight: 5 },
   { name: 'OpenStreetMap Nominatim', url: 'https://nominatim.org/release-docs/latest/api/Overview/', description: 'OpenStreetMap geocoding and reverse geocoding API.', auth: 'No', https: true, cors: 'Yes', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
-  { name: 'Mapbox', url: 'https://docs.mapbox.com/api/', description: 'Maps, geocoding, routing, navigation, tiles, and location APIs.', auth: 'apiKey', https: true, cors: 'Yes', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
+  { name: 'Mapbox', url: 'https://docs.mapbox.com/api/', description: 'Maps, geocoding, routing, navigation, tiles, places, nearby search, and location APIs.', auth: 'apiKey', https: true, cors: 'Yes', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
+  { name: 'Foursquare Places', url: 'https://docs.foursquare.com/developer/reference/place-search', description: 'Places, restaurants, nearby search, opening hours, photos, categories, geocoding, and venue data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
   { name: 'USAJOBS', url: 'https://developer.usajobs.gov/', description: 'US federal government job listings and hiring data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Jobs', source: 'curated', sourceWeight: 5 },
   { name: 'Adzuna', url: 'https://developer.adzuna.com/', description: 'Job search, salary, vacancies, and employment market data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Jobs', source: 'curated', sourceWeight: 5 },
   { name: 'TheSportsDB', url: 'https://www.thesportsdb.com/api.php', description: 'Sports teams, leagues, events, scores, players, and media.', auth: 'apiKey', https: true, cors: 'Yes', category: 'Sports & Fitness', source: 'curated', sourceWeight: 5 },
@@ -248,6 +309,27 @@ const CURATED_APIS = [
   { name: 'Transitland', url: 'https://www.transit.land/documentation/datastore/api-endpoints.html', description: 'Transit operators, routes, stops, schedules, GTFS feeds, and public transportation data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Transportation', source: 'curated', sourceWeight: 5 },
   { name: 'Transport API', url: 'https://www.transportapi.com/developers/documentation/', description: 'UK transport, train, bus, routes, stops, departures, and journey planning API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Transportation', source: 'curated', sourceWeight: 5 },
   { name: 'OpenFEC', url: 'https://api.open.fec.gov/developers/', description: 'US election campaign finance data including candidates, committees, donations, filings, and spending.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Open Data', source: 'curated', sourceWeight: 5 },
+  { name: 'DiceBear', url: 'https://www.dicebear.com/how-to-use/http-api/', description: 'No-auth avatar, identicon, profile picture, SVG, and placeholder image generation API.', auth: 'No', https: true, cors: 'Yes', category: 'Development', source: 'curated', sourceWeight: 5 },
+  { name: 'Boring Avatars', url: 'https://boringavatars.com/', description: 'No-auth SVG avatar and identicon generation from names, seeds, or wallet-like strings.', auth: 'No', https: true, cors: 'Yes', category: 'Development', source: 'curated', sourceWeight: 5 },
+  { name: 'Alchemy NFT API', url: 'https://docs.alchemy.com/reference/nft-api-quickstart', description: 'NFT metadata, owners, contract data, token IDs, wallet NFTs, transfers, and blockchain data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 5 },
+  { name: 'Etherscan', url: 'https://docs.etherscan.io/', description: 'Ethereum wallet balances, transactions, ERC20/ERC721 transfers, contract data, gas, and token APIs.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 5 },
+  { name: 'NHTSA Vehicle API', url: 'https://vpic.nhtsa.dot.gov/api/', description: 'No-auth vehicle VIN decode, recalls, manufacturers, models, safety, and transportation data.', auth: 'No', https: true, cors: 'Unknown', category: 'Transportation', source: 'curated', sourceWeight: 5 },
+  { name: 'Pexels', url: 'https://www.pexels.com/api/documentation/', description: 'Photo and image search API for stock photos, photography, collections, and media assets.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Photography', source: 'curated', sourceWeight: 5 },
+  { name: 'Openverse', url: 'https://api.openverse.engineering/v1/', description: 'Openly licensed image search, photos, audio, media metadata, and public domain content.', auth: 'No', https: true, cors: 'Yes', category: 'Media', source: 'curated', sourceWeight: 5 },
+  { name: 'Dog CEO', url: 'https://dog.ceo/dog-api/', description: 'No-auth random dog images and breed image API for demos and fun apps.', auth: 'No', https: true, cors: 'Yes', category: 'Animals', source: 'curated', sourceWeight: 5 },
+  { name: 'The Cat API', url: 'https://thecatapi.com/', description: 'Random cat images, breeds, facts, votes, favorites, and cat media API.', auth: 'No', https: true, cors: 'Yes', category: 'Animals', source: 'curated', sourceWeight: 5 },
+  { name: 'Official Joke API', url: 'https://official-joke-api.appspot.com/', description: 'No-auth random jokes, programming jokes, ten jokes, and entertainment demo data.', auth: 'No', https: true, cors: 'Yes', category: 'Entertainment', source: 'curated', sourceWeight: 5 },
+  { name: 'Quotable', url: 'https://docs.quotable.io/', description: 'No-auth random quotes, authors, tags, search, and quote API for apps.', auth: 'No', https: true, cors: 'Yes', category: 'Entertainment', source: 'curated', sourceWeight: 5 },
+  { name: 'LibreTranslate', url: 'https://libretranslate.com/docs/', description: 'Translation, language detection, text translation, and multilingual language API.', auth: 'No', https: true, cors: 'Unknown', category: 'Language', source: 'curated', sourceWeight: 5 },
+  { name: 'Perspective API', url: 'https://developers.perspectiveapi.com/s/docs', description: 'Text moderation, toxicity, sentiment-like safety scoring, comments, and abuse detection API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Text Analysis', source: 'curated', sourceWeight: 5 },
+  { name: 'Google Calendar API', url: 'https://developers.google.com/calendar/api/v3/reference', description: 'Calendar events create, update, list, OAuth calendars, reminders, attendees, and Google Calendar API.', auth: 'OAuth', https: true, cors: 'Unknown', category: 'Calendar', source: 'curated', sourceWeight: 5, openapiUrl: 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest' },
+  { name: 'AfterShip Tracking', url: 'https://www.aftership.com/docs/tracking/quickstart/api-quick-start', description: 'Package tracking, shipment status, carrier detection, tracking numbers, UPS, FedEx, and logistics API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Logistics', source: 'curated', sourceWeight: 5 },
+  { name: 'Shippo Tracking', url: 'https://docs.goshippo.com/shippoapi/public-api/', description: 'Shipment tracking, carrier tracking, labels, parcels, rates, UPS, FedEx, USPS, and logistics API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Logistics', source: 'curated', sourceWeight: 5 },
+  { name: 'OSV', url: 'https://google.github.io/osv.dev/api/', description: 'Open source vulnerability database for package CVEs, advisories, ecosystems, and security lookups.', auth: 'No', https: true, cors: 'Yes', category: 'Security', source: 'curated', sourceWeight: 5 },
+  { name: 'NVD', url: 'https://nvd.nist.gov/developers/vulnerabilities', description: 'CVE vulnerability lookup, security advisories, CPEs, CVSS scores, and NVD vulnerability data.', auth: 'No', https: true, cors: 'Unknown', category: 'Security', source: 'curated', sourceWeight: 5 },
+  { name: 'GitHub REST API', url: 'https://docs.github.com/en/rest', description: 'GitHub repositories, stars, issues, commits, pull requests, releases, users, and org data API.', auth: 'No', https: true, cors: 'Yes', category: 'Development', source: 'curated', sourceWeight: 5 },
+  { name: 'npm Registry API', url: 'https://github.com/npm/registry/blob/main/docs/REGISTRY-API.md', description: 'No-auth npm package metadata, versions, downloads, dist-tags, registry documents, and package data.', auth: 'No', https: true, cors: 'Yes', category: 'Development', source: 'curated', sourceWeight: 5 },
+  { name: 'Docker Hub', url: 'https://docs.docker.com/docker-hub/api/latest/', description: 'Docker image repositories, tags, registry metadata, namespaces, vulnerabilities, and container image data API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Development', source: 'curated', sourceWeight: 5 },
 ];
 
 function compactName(value) { return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
@@ -288,8 +370,8 @@ function domainAdjustment(entry, queryTokens) {
     const categoryHit = categoryBoost !== 0;
     const textHit = profile.boostTerms.some(t => text.includes(t));
     if (categoryHit) adjustment += categoryBoost;
-    else if (textHit) adjustment += 3;
-    else adjustment -= 10;
+    if (textHit) adjustment += categoryHit ? 6 : 3;
+    if (!categoryHit && !textHit) adjustment -= 10;
     for (const weak of profile.weakTerms) {
       if (queryTokens.has(weak) && text.includes(weak) && !categoryHit && !textHit) adjustment -= 4;
     }
@@ -353,7 +435,9 @@ function parseArgs(argv) {
 
 function applyQueryHints(args) {
   const query = String(args.query || '').toLowerCase();
-  if (!args.noAuth && /\b(no auth|without auth|no api key|no key|unauthenticated)\b/.test(query)) args.noAuth = true;
+  const noAuthHint = /\b(no auth|without auth|no api key|no key|unauthenticated)\b/.test(query);
+  const authScarceDomain = /\b(package tracking|shipment|shipments|carrier tracking|shipping|ups|fedex)\b/.test(query);
+  if (!args.noAuth && noAuthHint && !authScarceDomain) args.noAuth = true;
   if (!args.cors && /\b(cors|frontend-safe|browser-safe|frontend safe|browser safe)\b/.test(query)) args.cors = 'Yes';
 }
 
