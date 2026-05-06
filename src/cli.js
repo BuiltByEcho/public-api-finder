@@ -10,7 +10,34 @@ const SOURCES = {
 };
 const CACHE_PATH = process.env.PUBLIC_API_FINDER_CACHE || join(homedir(), '.cache', 'public-api-finder', 'all.json');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const DATA_VERSION = 8;
+const DATA_VERSION = 10;
+
+
+const TARGETED_BOOSTS = [
+  [/\b(login|openid|social auth|authentication|user profile)\b/, /\b(auth0|clerk|okta|openid connect|social login|authentication api)\b/i, 170],
+  [/\b(temporary email|temp email|inbox|receive messages)\b/, /\b(mail\.tm|dropmail|mailbox|email|inbox)\b/i, 90],
+  [/\b(otp|sms verification|phone number|line type)\b/, /\b(twilio verify|numverify|telnyx|vonage|phone number validation)\b/i, 170],
+  [/\b(bank account|banking|plaid|iban|routing number)\b/, /\b(plaid|iban|bank|routing|teller|truelayer)\b/i, 90],
+  [/\b(sales tax|tax rates|tax calculation|taxjar|avalara)\b/, /\b(taxjar|avalara|sales tax|tax rates)\b/i, 90],
+  [/\b(address validation|normalize|usps)\b/, /\b(smarty|usps|address validation|street api|lob)\b/i, 80],
+  [/\b(timezone|daylight savings|utc offset)\b/, /\b(timezonedb|timezone|utc offset|daylight savings)\b/i, 80],
+  [/\b(company enrichment|business entity|secretary of state|brand colors|domain logo|logo from domain)\b/, /\b(opencorporates|brandfetch|clearbit|business entity|domain enrichment|brand logo)\b/i, 135],
+  [/\b(screenshot|website preview|link preview|open graph|website metadata)\b/, /\b(microlink|urlbox|screenshot|open graph|link preview|metadata)\b/i, 135],
+  [/\b(favicon)\b/, /\b(microlink|urlbox|favicon)\b/i, 70],
+  [/\b(pdf|html to pdf)\b/, /\b(pdfshift|api2pdf|html to pdf|document rendering)\b/i, 175],
+  [/\b(ocr|receipt|extract text)\b/, /\b(ocr|vision|mindee|receipt|document)\b/i, 125],
+  [/\b(speech to text|transcription|audio transcription)\b/, /\b(assemblyai|deepgram|whisper|audio transcription|audio intelligence)\b/i, 175],
+  [/\b(text to speech|voice generation|tts)\b/, /\b(elevenlabs|text to speech|voice|tts|deepgram)\b/i, 135],
+  [/\b(image generation|stable diffusion)\b/, /\b(stability|stable diffusion|replicate|openai|image generation)\b/i, 135],
+  [/\b(moderate images|image moderation|nudity|violence|safe search)\b/, /\b(sightengine|safe search|nudity|violence|offensive content)\b/i, 175],
+  [/\b(sanctions|ofac|pep|kyc|aml)\b/, /\b(opensanctions|ofac|sanctions|pep|kyc|aml|chainalysis)\b/i, 135],
+  [/\b(wallet risk|crypto sanctions|blockchain wallet risk)\b/, /\b(chainalysis|trm|elliptic|sanctions|wallet risk)\b/i, 95],
+  [/\b(zipcode|zip code|postal code)\b/, /\b(zippopotam|zip|postal|census)\b/i, 80],
+  [/\b(real estate|property value|rent estimate)\b/, /\b(rentcast|attom|zillow|real estate|property|rent estimate)\b/i, 135],
+  [/\b(mortgage|loan calculator|loan rate)\b/, /\b(mortgage|loan|rate)\b/i, 110],
+  [/\b(flight status|airport|arrivals|departures)\b/, /\b(aviationstack|amadeus|flight|airport|arrivals|departures)\b/i, 135],
+  [/\b(hotel search|hotel booking|booking availability)\b/, /\b(amadeus|hotel|booking|availability)\b/i, 135],
+];
 
 const DOMAIN_PROFILES = {
   crypto: {
@@ -38,7 +65,7 @@ const DOMAIN_PROFILES = {
     weakTerms: ['lookup', 'records'],
   },
   qr: {
-    triggers: ['qr', 'qrcode', 'barcode', 'code', 'generation', 'generate'],
+    triggers: ['qr', 'qrcode', 'barcode'],
     categoryWeights: { development: 14, developer: 14, utility: 14, tools: 14, 'test data': 6, media: -10, weather: -10 },
     boostTerms: ['qr', 'qrcode', 'qr code', 'code generation', 'barcode'],
     weakTerms: ['code', 'generation', 'api'],
@@ -98,19 +125,19 @@ const DOMAIN_PROFILES = {
     weakTerms: ['events', 'create'],
   },
   logistics: {
-    triggers: ['package', 'packages', 'tracking', 'shipment', 'shipments', 'carrier', 'carriers', 'shipping', 'ups', 'fedex'],
+    triggers: ['tracking', 'shipment', 'shipments', 'carrier', 'carriers', 'shipping', 'ups', 'fedex'],
     categoryWeights: { logistics: 24, tracking: 24, commerce: 10, ecommerce: 8, development: -12, media: -12 },
     boostTerms: ['package tracking', 'shipment tracking', 'carrier tracking', 'shipping', 'ups', 'fedex', 'aftership', 'shippo'],
     weakTerms: ['tracking'],
   },
   devsec: {
-    triggers: ['cve', 'vulnerability', 'vulnerabilities', 'security', 'github', 'repo', 'repos', 'stars', 'issues', 'commits', 'npm', 'downloads', 'docker', 'registry', 'image', 'tags'],
+    triggers: ['cve', 'vulnerability', 'vulnerabilities', 'github', 'repo', 'repos', 'stars', 'issues', 'commits', 'npm', 'downloads', 'docker', 'registry', 'tags'],
     categoryWeights: { security: 20, development: 18, 'open data': 10, cloud: -10, media: -12, books: -12 },
     boostTerms: ['cve', 'vulnerability', 'vulnerabilities', 'osv', 'nvd', 'github repo', 'repo stars', 'issues', 'commits', 'npm package', 'package downloads', 'docker image', 'registry api', 'image tags'],
     weakTerms: ['package', 'image', 'metadata'],
   },
   weather: {
-    triggers: ['weather', 'forecast', 'radar', 'temperature', 'climate', 'alerts', 'precipitation', 'hourly', 'daily'],
+    triggers: ['weather', 'forecast', 'radar', 'temperature', 'climate', 'alerts', 'precipitation'],
     categoryWeights: { weather: 18, location: 4 },
     boostTerms: ['weather', 'forecast', 'radar', 'temperature', 'climate', 'alerts', 'precipitation', 'meteorological'],
     weakTerms: ['daily', 'hourly'],
@@ -182,13 +209,13 @@ const DOMAIN_PROFILES = {
     weakTerms: ['api'],
   },
   books: {
-    triggers: ['book', 'books', 'isbn', 'authors', 'author', 'covers', 'cover', 'library', 'libraries', 'public domain', 'ebooks', 'metadata'],
+    triggers: ['book', 'books', 'isbn', 'authors', 'author', 'covers', 'cover', 'library', 'libraries', 'ebooks'],
     categoryWeights: { books: 24, education: 12, 'open data': 8, government: -10, cloud: -18 },
     boostTerms: ['book', 'books', 'isbn', 'authors', 'author', 'covers', 'cover', 'open library', 'public domain', 'ebooks', 'metadata'],
     weakTerms: ['public', 'search'],
   },
   podcasts: {
-    triggers: ['podcast', 'podcasts', 'rss', 'itunes', 'audio', 'metadata'],
+    triggers: ['podcast', 'podcasts', 'rss', 'itunes'],
     categoryWeights: { podcasts: 24, media: 14, entertainment: 10, music: 8, anime: -12, video: -8, cloud: -18 },
     boostTerms: ['podcast', 'podcasts', 'episode', 'episodes', 'rss', 'itunes', 'audio', 'show metadata'],
     weakTerms: ['search', 'metadata'],
@@ -330,6 +357,38 @@ const CURATED_APIS = [
   { name: 'GitHub REST API', url: 'https://docs.github.com/en/rest', description: 'GitHub repositories, stars, issues, commits, pull requests, releases, users, and org data API.', auth: 'No', https: true, cors: 'Yes', category: 'Development', source: 'curated', sourceWeight: 5 },
   { name: 'npm Registry API', url: 'https://github.com/npm/registry/blob/main/docs/REGISTRY-API.md', description: 'No-auth npm package metadata, versions, downloads, dist-tags, registry documents, and package data.', auth: 'No', https: true, cors: 'Yes', category: 'Development', source: 'curated', sourceWeight: 5 },
   { name: 'Docker Hub', url: 'https://docs.docker.com/docker-hub/api/latest/', description: 'Docker image repositories, tags, registry metadata, namespaces, vulnerabilities, and container image data API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Development', source: 'curated', sourceWeight: 5 },
+
+  { name: 'Auth0', url: 'https://auth0.com/docs/api', description: 'OAuth, OpenID Connect, login, user profiles, social auth, authentication, and identity APIs.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Authentication', source: 'curated', sourceWeight: 5 },
+  { name: 'Clerk', url: 'https://clerk.com/docs/reference/backend-api', description: 'Authentication, user profiles, organizations, sessions, OAuth, social login, and identity APIs.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Authentication', source: 'curated', sourceWeight: 5 },
+  { name: 'Mail.tm', url: 'https://docs.mail.tm/', description: 'No-auth temporary email inboxes, disposable mail accounts, receive messages, and testing email API.', auth: 'No', https: true, cors: 'Yes', category: 'Email', source: 'curated', sourceWeight: 5 },
+  { name: 'Twilio Verify', url: 'https://www.twilio.com/docs/verify/api', description: 'SMS OTP verification, phone verification, one-time passcodes, factors, and verification checks.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Telecom', source: 'curated', sourceWeight: 5 },
+  { name: 'numverify', url: 'https://numverify.com/documentation', description: 'Phone number validation, carrier, country, location, line type, and international number lookup API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Telecom', source: 'curated', sourceWeight: 5 },
+  { name: 'Plaid', url: 'https://plaid.com/docs/api/', description: 'Bank account linking, transactions, balances, identity, auth, income, assets, and financial data API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Finance', source: 'curated', sourceWeight: 5 },
+  { name: 'IBAN.com', url: 'https://www.iban.com/validation-api', description: 'IBAN validation, bank routing, SWIFT/BIC checks, payments validation, and bank data API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Financial', source: 'curated', sourceWeight: 5 },
+  { name: 'TaxJar', url: 'https://developers.taxjar.com/api/reference/', description: 'Sales tax rates, tax calculation, address-based tax lookup, nexus, categories, and reporting API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Finance', source: 'curated', sourceWeight: 5 },
+  { name: 'Avalara', url: 'https://developer.avalara.com/api-reference/avatax/rest/v2/', description: 'Sales tax rates, tax calculation, address validation, exemption certificates, and tax compliance API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Finance', source: 'curated', sourceWeight: 5 },
+  { name: 'Smarty', url: 'https://www.smarty.com/docs/cloud/us-street-api', description: 'USPS address validation, autocomplete, normalization, deliverability, ZIP+4, and geocoding API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
+  { name: 'TimeZoneDB', url: 'https://timezonedb.com/api', description: 'Timezone lookup, UTC offset, daylight savings, coordinates, zone names, and local time API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
+  { name: 'OpenCorporates', url: 'https://api.opencorporates.com/documentation/API-Reference', description: 'Business entity search, company records, officers, filings, jurisdictions, and public company data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Business', source: 'curated', sourceWeight: 5 },
+  { name: 'Brandfetch', url: 'https://docs.brandfetch.com/reference/brand-api', description: 'Brand logo, domain logo, company colors, fonts, imagery, metadata, and brand enrichment API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Business', source: 'curated', sourceWeight: 5 },
+  { name: 'Clearbit Logo API', url: 'https://clearbit.com/docs#logo-api', description: 'No-auth company logo from domain, brand logos, domain enrichment, favicon-like images, and business identity.', auth: 'No', https: true, cors: 'Unknown', category: 'Business', source: 'curated', sourceWeight: 5 },
+  { name: 'Microlink', url: 'https://microlink.io/docs/api/getting-started/overview', description: 'Website metadata, link preview, Open Graph, screenshots, PDF capture, favicon, and content extraction API.', auth: 'No', https: true, cors: 'Yes', category: 'Development', source: 'curated', sourceWeight: 5 },
+  { name: 'Urlbox', url: 'https://urlbox.com/docs', description: 'Website screenshots, responsive previews, full-page captures, image/PDF rendering, and web previews API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Development', source: 'curated', sourceWeight: 5 },
+  { name: 'PDFShift', url: 'https://docs.pdfshift.io/', description: 'HTML to PDF generation, document rendering, screenshots, templates, and PDF conversion API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Documents', source: 'curated', sourceWeight: 5 },
+  { name: 'OCR.space', url: 'https://ocr.space/ocrapi', description: 'OCR text extraction from images, PDFs, receipts, screenshots, and scanned documents API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Documents', source: 'curated', sourceWeight: 5 },
+  { name: 'AssemblyAI', url: 'https://www.assemblyai.com/docs', description: 'Speech to text, audio transcription, speaker labels, summarization, sentiment, and audio intelligence API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'AI', source: 'curated', sourceWeight: 5 },
+  { name: 'Deepgram', url: 'https://developers.deepgram.com/docs', description: 'Speech to text, transcription, audio intelligence, diarization, language detection, and TTS APIs.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'AI', source: 'curated', sourceWeight: 5 },
+  { name: 'ElevenLabs', url: 'https://elevenlabs.io/docs/api-reference/introduction', description: 'Text to speech, voice generation, speech synthesis, voice cloning, and audio generation API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'AI', source: 'curated', sourceWeight: 5 },
+  { name: 'Stability AI', url: 'https://platform.stability.ai/docs/api-reference', description: 'AI image generation, Stable Diffusion, image editing, upscaling, and generative media API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'AI', source: 'curated', sourceWeight: 5 },
+  { name: 'Sightengine', url: 'https://sightengine.com/docs', description: 'Image moderation, nudity, violence, weapons, offensive content, face detection, and safe search API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'AI', source: 'curated', sourceWeight: 5 },
+  { name: 'OpenSanctions', url: 'https://www.opensanctions.org/docs/api/', description: 'Sanctions, OFAC, PEP screening, companies, people, AML, KYC, and compliance data API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Security', source: 'curated', sourceWeight: 5 },
+  { name: 'Chainalysis', url: 'https://docs.chainalysis.com/api/kyt/', description: 'Blockchain wallet risk, crypto sanctions screening, transaction monitoring, KYT, and compliance API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 5 },
+  { name: 'Zippopotam.us', url: 'https://www.zippopotam.us/', description: 'No-auth ZIP code, postal code, city, state, country, place, and geocoding lookup API.', auth: 'No', https: true, cors: 'Yes', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
+  { name: 'RentCast', url: 'https://developers.rentcast.io/reference/introduction', description: 'Real estate property data, rent estimates, property values, comparable rentals, and market data API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Real Estate', source: 'curated', sourceWeight: 5 },
+  { name: 'ATTOM', url: 'https://api.developer.attomdata.com/docs', description: 'Property data, real estate records, valuation, mortgage, ownership, tax, and neighborhood data API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Real Estate', source: 'curated', sourceWeight: 5 },
+  { name: 'Mortgage News Daily', url: 'https://www.mortgagenewsdaily.com/mortgage-rates', description: 'Mortgage rates, loan rate data, daily mortgage market rates, and home loan benchmarks.', auth: 'Unknown', https: true, cors: 'Unknown', category: 'Finance', source: 'curated', sourceWeight: 5 },
+  { name: 'Aviationstack', url: 'https://aviationstack.com/documentation', description: 'Flight status, airports, airlines, aircraft, arrivals, departures, routes, and aviation data API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Travel', source: 'curated', sourceWeight: 5 },
+  { name: 'Amadeus Travel APIs', url: 'https://developers.amadeus.com/self-service', description: 'Flight search, airport data, hotel search, hotel booking, availability, pricing, and travel APIs.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Travel', source: 'curated', sourceWeight: 5 },
 ];
 
 function compactName(value) { return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
@@ -470,7 +529,28 @@ function asciiRatio(value) {
   return ascii / s.length;
 }
 
-function score(entry, queryTokens) {
+
+function targetedBoost(entry, queryText) {
+  const haystack = `${entry.name || ''} ${entry.category || ''} ${entry.description || ''} ${entry.url || ''}`;
+  let boost = 0;
+  for (const [queryPattern, entryPattern, amount] of TARGETED_BOOSTS) {
+    if (queryPattern.test(queryText) && entryPattern.test(haystack)) boost = Math.max(boost, amount);
+  }
+  if (boost > 0 && (entry.sources || [entry.source]).includes('curated')) boost += 30;
+  return boost;
+}
+
+function genericCloudPenalty(entry, queryText) {
+  if (/\b(azure|aws|amazon|google cloud|gcp|cloud|kubernetes|container|vm|virtual machine|storage account|resource group)\b/.test(queryText)) return 0;
+  const name = String(entry.name || '');
+  const cat = String(entry.category || '').toLowerCase();
+  const desc = String(entry.description || '').toLowerCase();
+  if (/ManagementClient$/.test(name) || (/\bmanagement client\b/.test(desc) && cat.includes('cloud'))) return 90;
+  if (cat.includes('cloud') && /\b(api management|network management|sql management|storage management|compute management)\b/.test(desc)) return 70;
+  return 0;
+}
+
+function score(entry, queryTokens, queryText = '') {
   let base = textScore(entry, queryTokens);
   if (entry.openapiUrl) base += 2;
   if (entry.sources?.length > 1) base += 2;
@@ -479,7 +559,7 @@ function score(entry, queryTokens) {
   if (asciiRatio(entry.name) < 0.7) base -= 60;
   else if (asciiRatio(`${entry.name || ''} ${entry.description || ''}`) < 0.65) base -= 18;
   base += knownBestBoost(entry.name);
-  return base + domainAdjustment(entry, queryTokens);
+  return base + domainAdjustment(entry, queryTokens) + targetedBoost(entry, queryText) - genericCloudPenalty(entry, queryText);
 }
 
 async function cacheIsFresh() {
@@ -619,7 +699,7 @@ function mergeEntry(a, b) {
     auth: a.auth !== 'Unknown' ? a.auth : b.auth,
     https: Boolean(a.https || b.https),
     cors: a.cors === 'Yes' || b.cors === 'Yes' ? 'Yes' : (a.cors !== 'Unknown' ? a.cors : b.cors),
-    category: a.category !== 'Unknown' ? a.category : b.category,
+    category: b.source === 'curated' && b.category ? b.category : (a.category !== 'Unknown' ? a.category : b.category),
     openapiUrl: a.openapiUrl || b.openapiUrl || null,
     provider: a.provider || b.provider,
     sourceWeight: (a.sourceWeight || 0) + (b.sourceWeight || 0),
@@ -677,8 +757,9 @@ function filterEntries(entries, args) {
     if (args.cors && String(e.cors || '').toLowerCase() !== args.cors.toLowerCase()) return [];
     const matched = q.size ? textScore(e, q) : 1;
     const domain = q.size ? domainAdjustment(e, q) : 0;
-    if (q.size && matched === 0 && domain <= 0) return [];
-    const s = q.size ? score(e, q) : 1;
+    const targeted = q.size ? targetedBoost(e, args.query.toLowerCase()) : 0;
+    if (q.size && matched === 0 && domain <= 0 && targeted <= 0) return [];
+    const s = q.size ? score(e, q, args.query.toLowerCase()) : 1;
     if (q.size && s <= 0) return [];
     return [{ ...e, score: s + (e.sourceWeight || 0) }];
   }).sort((a, b) => b.score - a.score || String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name))).slice(0, args.limit);
