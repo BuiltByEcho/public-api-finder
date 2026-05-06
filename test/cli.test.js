@@ -18,7 +18,7 @@ function fixtureCache(entries = BASE_ENTRIES) {
   const dir = join(tmpdir(), `public-api-finder-test-${process.pid}-${Date.now()}`);
   mkdirSync(dir, { recursive: true });
   const path = join(dir, 'all.json');
-  writeFileSync(path, JSON.stringify({ count: entries.length, entries }));
+  writeFileSync(path, JSON.stringify({ dataVersion: 2, count: entries.length, entries }));
   return path;
 }
 
@@ -103,4 +103,14 @@ test('check annotates result reachability failures', () => {
   assert.equal(rows[0].check.status, null);
   assert.equal(rows[0].check.method, 'GET');
   assert.ok(rows[0].check.error);
+});
+
+test('short generic api names do not receive broad curated-name boosts', () => {
+  const r = run(['payments openapi', '--openapi', '--json'], [
+    { name: 'API', url: 'https://example.com/openapi.json', description: 'Generic web API', auth: 'Unknown', https: true, cors: 'Unknown', category: 'OpenAPI', openapiUrl: 'https://example.com/openapi.json' },
+    { name: 'Stripe API', url: 'https://docs.stripe.com/api', description: 'Payments, checkout, billing, invoices, and subscriptions API', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Payments', openapiUrl: 'https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json' }
+  ]);
+  assert.equal(r.status, 0, r.stderr);
+  const rows = JSON.parse(r.stdout);
+  assert.equal(rows[0].name, 'Stripe API');
 });

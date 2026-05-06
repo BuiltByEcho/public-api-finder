@@ -10,6 +10,7 @@ const SOURCES = {
 };
 const CACHE_PATH = process.env.PUBLIC_API_FINDER_CACHE || join(homedir(), '.cache', 'public-api-finder', 'all.json');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const DATA_VERSION = 2;
 
 const DOMAIN_PROFILES = {
   crypto: {
@@ -72,6 +73,66 @@ const DOMAIN_PROFILES = {
     boostTerms: ['commerce', 'products', 'product', 'prices', 'deals', 'coupons', 'barcode', 'ecommerce', 'shopping', 'reviews', 'inventory', 'catalog', 'store'],
     weakTerms: ['price', 'prices'],
   },
+  payments: {
+    triggers: ['payment', 'payments', 'billing', 'checkout', 'invoice', 'invoices', 'stripe', 'subscription', 'subscriptions'],
+    categoryWeights: { payments: 22, ecommerce: 6, openapi: 2, financial: -4, finance: -4, cloud: -10 },
+    boostTerms: ['payment', 'payments', 'billing', 'checkout', 'invoice', 'invoices', 'stripe', 'subscription', 'subscriptions'],
+    weakTerms: ['openapi', 'api'],
+  },
+  email: {
+    triggers: ['email', 'emails', 'mailbox', 'deliverability', 'validation', 'verify', 'verification'],
+    categoryWeights: { email: 22, communication: 8, openapi: 3 },
+    boostTerms: ['email', 'mailbox', 'deliverability', 'validation', 'verify', 'verification', 'smtp'],
+    weakTerms: ['validation'],
+  },
+  ip: {
+    triggers: ['ip', 'geolocation', 'geoip', 'asn', 'whois'],
+    categoryWeights: { geocoding: 12, location: 12, security: 8 },
+    boostTerms: ['ip', 'geolocation', 'geoip', 'asn', 'whois', 'country', 'city'],
+    weakTerms: ['geolocation'],
+  },
+  dictionary: {
+    triggers: ['dictionary', 'definitions', 'definition', 'word', 'words', 'thesaurus', 'phonetics'],
+    categoryWeights: { dictionaries: 24, dictionary: 24, education: 8, development: -12 },
+    boostTerms: ['dictionary', 'definition', 'definitions', 'word', 'words', 'thesaurus', 'phonetics', 'pronunciation'],
+    weakTerms: ['api'],
+  },
+  food: {
+    triggers: ['recipe', 'recipes', 'nutrition', 'ingredients', 'ingredient', 'calories', 'food', 'meal', 'meals'],
+    categoryWeights: { food: 18, 'food & drink': 18, health: 6, social: -8 },
+    boostTerms: ['recipe', 'recipes', 'nutrition', 'ingredients', 'ingredient', 'calories', 'food', 'meal', 'meals'],
+    weakTerms: ['data'],
+  },
+  environment: {
+    triggers: ['air', 'quality', 'pollution', 'aqi', 'environment', 'environmental', 'climate'],
+    categoryWeights: { environment: 20, science: 10, 'science & math': 10, weather: 5 },
+    boostTerms: ['air quality', 'pollution', 'aqi', 'environment', 'environmental', 'climate', 'particulate'],
+    weakTerms: ['quality'],
+  },
+  currency: {
+    triggers: ['currency', 'currencies', 'exchange', 'forex', 'fx', 'rates', 'conversion'],
+    categoryWeights: { 'currency exchange': 24, finance: 8, financial: 8, cryptocurrency: -10 },
+    boostTerms: ['currency', 'currencies', 'exchange rates', 'forex', 'fx', 'conversion'],
+    weakTerms: ['rates', 'exchange'],
+  },
+  holidays: {
+    triggers: ['holiday', 'holidays', 'calendar', 'calendars', 'observance', 'observances'],
+    categoryWeights: { calendar: 22, calendars: 22, date: 12, government: -6 },
+    boostTerms: ['holiday', 'holidays', 'calendar', 'observance', 'public holidays', 'bank holidays'],
+    weakTerms: ['public'],
+  },
+  testdata: {
+    triggers: ['random', 'fake', 'mock', 'test', 'dummy', 'sample', 'user', 'users', 'placeholder'],
+    categoryWeights: { 'test data': 26, development: 8, shopping: 3, 'sports & fitness': -10, cryptocurrency: -12 },
+    boostTerms: ['random user', 'fake', 'mock', 'test data', 'dummy', 'sample', 'placeholder', 'users'],
+    weakTerms: ['data', 'user'],
+  },
+  transit: {
+    triggers: ['transit', 'transport', 'transportation', 'bus', 'rail', 'train', 'subway', 'gtfs', 'routes', 'stops'],
+    categoryWeights: { transportation: 24, transit: 24, open_data: 4, 'open data': 4, government: 2, food: -12, 'sports & fitness': -12 },
+    boostTerms: ['transit', 'transport', 'transportation', 'bus', 'rail', 'train', 'subway', 'gtfs', 'routes', 'stops'],
+    weakTerms: ['open', 'data'],
+  },
 };
 
 const CURATED_APIS = [
@@ -118,10 +179,38 @@ const CURATED_APIS = [
   { name: 'OpenFEC', url: 'https://api.open.fec.gov/developers/', description: 'US campaign finance, candidates, committees, filings, and election data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Government', source: 'curated', sourceWeight: 5 },
   { name: 'Fake Store API', url: 'https://fakestoreapi.com/', description: 'Fake ecommerce products, carts, users, and categories for demos and prototypes.', auth: 'No', https: true, cors: 'Yes', category: 'Shopping', source: 'curated', sourceWeight: 5 },
   { name: 'Open Food Facts', url: 'https://world.openfoodfacts.org/data', description: 'Food product database with barcodes, ingredients, nutrition, and labels.', auth: 'No', https: true, cors: 'Yes', category: 'Food', source: 'curated', sourceWeight: 5 },
+  { name: 'Stripe', url: 'https://docs.stripe.com/api', description: 'Payments, checkout, billing, invoices, subscriptions, and customer payment methods API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Payments', source: 'curated', sourceWeight: 5, openapiUrl: 'https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json' },
+  { name: 'PayPal', url: 'https://developer.paypal.com/api/rest/', description: 'Payments, checkout orders, invoices, subscriptions, payouts, and disputes API.', auth: 'OAuth', https: true, cors: 'Unknown', category: 'Payments', source: 'curated', sourceWeight: 5 },
+  { name: 'Abstract Email Validation', url: 'https://www.abstractapi.com/email-verification-validation-api', description: 'Email validation, deliverability, typo detection, MX records, and disposable email checks.', auth: 'apiKey', https: true, cors: 'Yes', category: 'Email', source: 'curated', sourceWeight: 5 },
+  { name: 'IPinfo', url: 'https://ipinfo.io/developers', description: 'IP geolocation, ASN, company, carrier, privacy, and hosted domains data.', auth: 'No', https: true, cors: 'Unknown', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
+  { name: 'Free Dictionary API', url: 'https://dictionaryapi.dev/', description: 'Free dictionary definitions, phonetics, pronunciations, parts of speech, meanings, and examples.', auth: 'No', https: true, cors: 'Yes', category: 'Dictionaries', source: 'curated', sourceWeight: 5 },
+  { name: 'spoonacular', url: 'https://spoonacular.com/food-api/docs', description: 'Recipes, ingredients, meal planning, nutrition, grocery products, and food ontology API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Food & Drink', source: 'curated', sourceWeight: 5 },
+  { name: 'OpenAQ', url: 'https://docs.openaq.org/', description: 'Open air quality measurements, locations, sensors, pollutants, and environmental monitoring data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Environment', source: 'curated', sourceWeight: 5 },
+  { name: 'Frankfurter', url: 'https://www.frankfurter.app/docs', description: 'Currency exchange rates, conversion, historical rates, and time series data from ECB.', auth: 'No', https: true, cors: 'Yes', category: 'Currency Exchange', source: 'curated', sourceWeight: 5 },
+  { name: 'Currency-api', url: 'https://github.com/fawazahmed0/currency-api#readme', description: 'Free currency exchange rates API with many currencies, no auth, and CDN-hosted JSON endpoints.', auth: 'No', https: true, cors: 'Yes', category: 'Currency Exchange', source: 'curated', sourceWeight: 5 },
+  { name: 'Nager.Date', url: 'https://date.nager.at/Api', description: 'Public holidays by country and year, long weekends, country info, and calendar date data.', auth: 'No', https: true, cors: 'Yes', category: 'Calendar', source: 'curated', sourceWeight: 5 },
+  { name: 'Calendarific', url: 'https://calendarific.com/api-documentation', description: 'Worldwide public holidays, observances, local holidays, and calendar metadata.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Calendar', source: 'curated', sourceWeight: 5 },
+  { name: 'Random User Generator', url: 'https://randomuser.me/documentation', description: 'Random fake user profiles for mockups, tests, demos, placeholders, and sample data.', auth: 'No', https: true, cors: 'Yes', category: 'Test Data', source: 'curated', sourceWeight: 5 },
+  { name: 'JSONPlaceholder', url: 'https://jsonplaceholder.typicode.com/', description: 'Fake REST API for posts, comments, albums, photos, todos, and users in demos and tests.', auth: 'No', https: true, cors: 'Yes', category: 'Test Data', source: 'curated', sourceWeight: 5 },
+  { name: 'Transitland', url: 'https://www.transit.land/documentation/datastore/api-endpoints.html', description: 'Transit operators, routes, stops, schedules, GTFS feeds, and public transportation data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Transportation', source: 'curated', sourceWeight: 5 },
+  { name: 'Transport API', url: 'https://www.transportapi.com/developers/documentation/', description: 'UK transport, train, bus, routes, stops, departures, and journey planning API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Transportation', source: 'curated', sourceWeight: 5 },
 ];
 
 function compactName(value) { return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
 const KNOWN_BEST_NAMES = new Map(CURATED_APIS.map(api => [compactName(api.name), 15]));
+
+function knownBestBoost(entryName) {
+  const compactEntryName = compactName(entryName);
+  if (compactEntryName.length < 4) return 0;
+  let boost = 0;
+  for (const [name, weight] of KNOWN_BEST_NAMES) {
+    if (compactEntryName === name) boost = Math.max(boost, weight);
+    else if (compactEntryName.length >= 6 && name.length >= 6 && (compactEntryName.includes(name) || name.includes(compactEntryName))) {
+      boost = Math.max(boost, Math.floor(weight / 2));
+    }
+  }
+  return boost;
+}
 
 function detectDomains(queryTokens) {
   return Object.entries(DOMAIN_PROFILES)
@@ -178,6 +267,7 @@ Examples:
   public-api-finder "weather forecast" --no-auth --https
   public-api-finder "crypto prices" --category Cryptocurrency --limit 5
   public-api-finder "payments" --openapi --json
+  public-api-finder "weather forecast" --no-auth --https --check
 `);
 }
 
@@ -240,10 +330,7 @@ function score(entry, queryTokens) {
   if (entry.https) base += 1;
   if (asciiRatio(entry.name) < 0.7) base -= 60;
   else if (asciiRatio(`${entry.name || ''} ${entry.description || ''}`) < 0.65) base -= 18;
-  const compactEntryName = compactName(entry.name);
-  for (const [name, weight] of KNOWN_BEST_NAMES) {
-    if (compactEntryName.includes(name) || name.includes(compactEntryName)) base += weight;
-  }
+  base += knownBestBoost(entry.name);
   return base + domainAdjustment(entry, queryTokens);
 }
 
@@ -270,7 +357,7 @@ async function fetchText(url) {
 
 function normalizeCategory(cat) {
   if (!cat) return 'Unknown';
-  return String(cat).replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  return String(cat).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 function cleanDescription(desc) {
@@ -366,7 +453,7 @@ async function buildData() {
   } else sourceStatus['apis-guru'] = `error: ${guru.reason.message}`;
   sourceStatus.curated = CURATED_APIS.length;
   entries.push(...CURATED_APIS);
-  return { generatedAt: new Date().toISOString(), sourceStatus, entries: dedupe(entries) };
+  return { dataVersion: DATA_VERSION, generatedAt: new Date().toISOString(), sourceStatus, entries: dedupe(entries) };
 }
 
 function keyFor(entry) {
@@ -418,7 +505,7 @@ function dedupe(entries) {
 async function loadData(refresh = false) {
   if (!refresh && await cacheIsFresh()) {
     const cached = JSON.parse(await readFile(CACHE_PATH, 'utf8'));
-    return cached.entries || [];
+    if (cached.dataVersion === DATA_VERSION) return cached.entries || [];
   }
   const data = await buildData();
   await mkdir(dirname(CACHE_PATH), { recursive: true });
