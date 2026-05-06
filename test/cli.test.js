@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -35,6 +35,19 @@ test('help prints usage', () => {
   assert.equal(r.status, 0);
   assert.match(r.stdout, /public-api-finder/);
   assert.match(r.stdout, /weather forecast/);
+});
+
+test('runs when invoked through an npm-style bin symlink', () => {
+  const dir = join(tmpdir(), `public-api-finder-bin-${process.pid}-${Date.now()}`);
+  mkdirSync(dir, { recursive: true });
+  const bin = join(dir, 'public-api-finder');
+  symlinkSync(join(process.cwd(), 'src/cli.js'), bin);
+  const r = spawnSync(process.execPath, [bin, 'weather forecast', '--no-auth', '--https'], {
+    encoding: 'utf8',
+    env: { ...process.env, PUBLIC_API_FINDER_CACHE: fixtureCache() }
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /Open-Meteo/);
 });
 
 test('filters no-auth and https results', () => {

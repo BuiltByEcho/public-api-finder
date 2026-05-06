@@ -1,8 +1,9 @@
 #!/usr/bin/env node
+import { realpathSync } from 'node:fs';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 const SOURCES = {
   publicApiLists: 'https://public-api-lists.github.io/public-api-lists/api/all.json',
@@ -860,7 +861,16 @@ async function main() {
   return 0;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+function isDirectRun() {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+}
+
+if (isDirectRun()) {
   main().then(code => process.exitCode = code).catch(err => {
     console.error(`public-api-finder: ${err.message}`);
     process.exitCode = 1;
