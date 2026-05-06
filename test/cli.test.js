@@ -18,7 +18,7 @@ function fixtureCache(entries = BASE_ENTRIES) {
   const dir = join(tmpdir(), `public-api-finder-test-${process.pid}-${Date.now()}`);
   mkdirSync(dir, { recursive: true });
   const path = join(dir, 'all.json');
-  writeFileSync(path, JSON.stringify({ dataVersion: 15, count: entries.length, entries }));
+  writeFileSync(path, JSON.stringify({ dataVersion: 16, count: entries.length, entries }));
   return path;
 }
 

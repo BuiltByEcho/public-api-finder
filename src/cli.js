@@ -13,7 +13,7 @@ const SOURCES = {
 };
 const CACHE_PATH = process.env.PUBLIC_API_FINDER_CACHE || join(homedir(), '.cache', 'public-api-finder', 'all.json');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const DATA_VERSION = 15;
+const DATA_VERSION = 16;
 
 const ENRICHMENT_FIELDS = [
   'tags',
@@ -54,6 +54,15 @@ const TARGETED_BOOSTS = [
   [/\b(sanctions|ofac|pep|kyc|aml)\b/, /\b(opensanctions|ofac|sanctions|pep|kyc|aml|chainalysis)\b/i, 135],
   [/\b(wallet risk|crypto sanctions|blockchain wallet risk)\b/, /\b(chainalysis|trm|elliptic|sanctions|wallet risk)\b/i, 95],
   [/\b(crypto token metadata|token metadata|token logos|coin logos|logos contract addresses)\b/, /\b(coinmarketcap|coingecko|coinpaprika|coinbase|token logos|coin metadata|coin images)\b/i, 90],
+  [/\b(stock|stocks|stock quote|stock prices|equity|equities|ticker|tickers)\b/, /\b(stooq|portfolio optimizer|alpha vantage|polygon|finnhub|twelve data|stock|stocks|equity|ticker|quote)\b/i, 90],
+  [/\b(reverse geocoding|geocoding|maps routing|routing api|distance matrix|places)\b/, /\b(nominatim|geocod\.io|graphhopper|mapbox|foursquare|geocoding|routing|distance matrix|places)\b/i, 120],
+  [/\b(webhook testing|webhook debug|request bin|mock api)\b/, /\b(webhook\.site|beeceptor|requestbin|webhook|mock api|request bin)\b/i, 180],
+  [/\b(oauth identity|passwordless auth|openid|social auth|login oauth)\b/, /\b(auth0|clerk|stytch|magic|openid|oauth|passwordless|authentication|identity)\b/i, 190],
+  [/\b(cve lookup|vulnerability database|vulnerability data|package security)\b/, /\b(osv|nvd|cve|cvss|vulnerability|security advisories)\b/i, 190],
+  [/\b(cve lookup|cve api|cve search)\b/, /\b(osv|nvd|cve)\b/i, 260],
+  [/\b(open data demographics|demographics|census data)\b/, /\b(census|data\.gov|demographics|open data|government data)\b/i, 145],
+  [/\b(joke|jokes|meme|memes|random quote)\b/, /\b(official joke|joke api|jokes|quotable|quote)\b/i, 110],
+  [/\b(github repo|repo stats|stars issues commits)\b/, /\b(github rest|github|gitlab|repositories|stars|issues|commits)\b/i, 100],
   [/\b(zipcode|zip code|postal code)\b/, /\b(zippopotam|zip|postal|census)\b/i, 80],
   [/\b(real estate|property value|rent estimate)\b/, /\b(rentcast|attom|zillow|real estate|property|rent estimate)\b/i, 135],
   [/\b(mortgage|mortgage rates|loan calculator|loan rate|home loan)\b/, /\b(mortgage|home loan|loan rate)\b/i, 230],
@@ -388,9 +397,13 @@ const CURATED_APIS = [
   { name: 'GitHub REST API', url: 'https://docs.github.com/en/rest', description: 'GitHub repositories, stars, issues, commits, pull requests, releases, users, and org data API.', auth: 'No', https: true, cors: 'Yes', category: 'Development', source: 'curated', sourceWeight: 5 },
   { name: 'npm Registry API', url: 'https://github.com/npm/registry/blob/main/docs/REGISTRY-API.md', description: 'No-auth npm package metadata, versions, downloads, dist-tags, registry documents, and package data.', auth: 'No', https: true, cors: 'Yes', category: 'Development', source: 'curated', sourceWeight: 5 },
   { name: 'Docker Hub', url: 'https://docs.docker.com/docker-hub/api/latest/', description: 'Docker image repositories, tags, registry metadata, namespaces, vulnerabilities, and container image data API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Development', source: 'curated', sourceWeight: 5 },
+  { name: 'Webhook.site', url: 'https://webhook.site/', description: 'Webhook testing, inspect HTTP requests, debug callbacks, request bins, and temporary webhook endpoints.', auth: 'No', https: true, cors: 'Yes', category: 'Development', source: 'curated', sourceWeight: 5 },
+  { name: 'Beeceptor', url: 'https://beeceptor.com/docs/', description: 'Webhook testing, mock APIs, request bin inspection, HTTP debugging, and endpoint simulation.', auth: 'No', https: true, cors: 'Unknown', category: 'Development', source: 'curated', sourceWeight: 5 },
 
   { name: 'Auth0', url: 'https://auth0.com/docs/api', description: 'OAuth, OpenID Connect, login, user profiles, social auth, authentication, and identity APIs.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Authentication', source: 'curated', sourceWeight: 5 },
   { name: 'Clerk', url: 'https://clerk.com/docs/reference/backend-api', description: 'Authentication, user profiles, organizations, sessions, OAuth, social login, and identity APIs.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Authentication', source: 'curated', sourceWeight: 5 },
+  { name: 'Stytch', url: 'https://stytch.com/docs/api', description: 'Passwordless login, magic links, OTP, OAuth, passkeys, sessions, and user authentication API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Authentication', source: 'curated', sourceWeight: 5 },
+  { name: 'Magic', url: 'https://magic.link/docs/api', description: 'Passwordless authentication, magic links, wallets, login, users, and identity API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Authentication', source: 'curated', sourceWeight: 5 },
   { name: 'Mail.tm', url: 'https://docs.mail.tm/', description: 'No-auth temporary email inboxes, disposable mail accounts, receive messages, and testing email API.', auth: 'No', https: true, cors: 'Yes', category: 'Email', source: 'curated', sourceWeight: 5 },
   { name: 'Twilio Verify', url: 'https://www.twilio.com/docs/verify/api', description: 'SMS OTP verification, phone verification, one-time passcodes, factors, and verification checks.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Telecom', source: 'curated', sourceWeight: 5 },
   { name: 'numverify', url: 'https://numverify.com/documentation', description: 'Phone number validation, carrier, country, location, line type, and international number lookup API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Telecom', source: 'curated', sourceWeight: 5 },
@@ -836,8 +849,35 @@ function intentPenalty(entry, queryText) {
     if (/\b(favicon|website preview|open graph|link preview|screenshot)\b/.test(queryText) && !/\b(microlink|urlbox|favicon|website metadata|open graph|link preview|screenshot)\b/.test(text)) penalty += 120;
   }
 
-  if (/\b(school district|school boundary|district boundary)\b/.test(queryText) && /\b(linkedin|jobs scraper|lead|sales|recruiting)\b/.test(text)) {
+  if (/\b(school district|school boundary|district boundary|reverse geocoding|maps routing|routing api|open data demographics|demographics|census data)\b/.test(queryText) && /\b(linkedin|jobs scraper|lead|sales|recruiting|amazon product scraper|tiktok profile scraper)\b/.test(text)) {
+    penalty += 120;
+  }
+  if (/\b(stock|stocks|stock quote|stock prices|equity|equities|ticker|tickers)\b/.test(queryText) && !/finance|financial|stock|stocks|equity|ticker|market data|portfolio|stooq|finnhub|polygon|alpha vantage|twelve data/.test(text)) {
+    penalty += 80;
+  }
+  if (/\b(stock|stocks|stock quote|stock prices|equity|equities|ticker|tickers)\b/.test(queryText) && /\b(quotable|joke|entertainment|food|weather|test data|placeholder)\b/.test(text)) {
+    penalty += 140;
+  }
+  if (/\bcrypto\b/.test(queryText) && /\bnot stocks?\b/.test(queryText) && /\b(finance|financial|stock|stocks|equity|ticker|portfolio|stooq|finnhub|polygon|sec edgar|predscope|valueray|econdb)\b/.test(text)) {
+    penalty += 240;
+  }
+  if (/\b(oauth identity|passwordless auth|openid|social auth|login oauth)\b/.test(queryText) && !/authentication|auth0|clerk|stytch|magic|openid|identity|passwordless|social auth/.test(text)) {
+    penalty += 160;
+  }
+  if (/\b(oauth identity|passwordless auth|openid|social auth|login oauth)\b/.test(queryText) && /\b(calendar|nager|holiday|open food|plaid|clearbit logo)\b/.test(text)) {
+    penalty += 180;
+  }
+  if (/\b(webhook testing|webhook debug|request bin|mock api)\b/.test(queryText) && !/webhook|beeceptor|requestbin|mock api|pipedream/.test(text)) {
+    penalty += 80;
+  }
+  if (/\b(cve lookup|vulnerability database|vulnerability data|package security)\b/.test(queryText) && !/osv|nvd|cve|cvss|vulnerability|security advisories/.test(text)) {
     penalty += 95;
+  }
+  if (/\b(cve lookup|cve api|cve search)\b/.test(queryText) && !/osv|nvd|cve/.test(text)) {
+    penalty += 180;
+  }
+  if (/\b(joke api|jokes?|memes?)\b/.test(queryText) && !/joke|meme|quote/.test(text)) {
+    penalty += 70;
   }
 
   if (!cat.includes('cryptocurrency') && /\b(wallet address|identicon|avatar|profile picture)\b/.test(queryText) && /\b(avatar|identicon|profile picture)\b/.test(text)) {
