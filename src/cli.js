@@ -9,10 +9,11 @@ const SOURCES = {
   publicApiLists: 'https://public-api-lists.github.io/public-api-lists/api/all.json',
   publicApisReadme: 'https://raw.githubusercontent.com/public-apis/public-apis/master/README.md',
   apisGuru: 'https://api.apis.guru/v2/list.json',
+  apiMegaList: 'https://raw.githubusercontent.com/cporter202/API-mega-list/main/README.md',
 };
 const CACHE_PATH = process.env.PUBLIC_API_FINDER_CACHE || join(homedir(), '.cache', 'public-api-finder', 'all.json');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const DATA_VERSION = 14;
+const DATA_VERSION = 15;
 
 const ENRICHMENT_FIELDS = [
   'tags',
@@ -683,7 +684,7 @@ Usage:
 
 Options:
   --category <name>  Filter by category substring
-  --source <name>    Filter by source: public-api-lists, public-apis, apis-guru, curated
+  --source <name>    Filter by source: public-api-lists, public-apis, apis-guru, api-mega-list, curated
   --no-auth          Only APIs with Auth = No
   --https            Only HTTPS APIs
   --cors <value>     Filter by CORS: Yes, No, Unknown
@@ -835,6 +836,10 @@ function intentPenalty(entry, queryText) {
     if (/\b(favicon|website preview|open graph|link preview|screenshot)\b/.test(queryText) && !/\b(microlink|urlbox|favicon|website metadata|open graph|link preview|screenshot)\b/.test(text)) penalty += 120;
   }
 
+  if (/\b(school district|school boundary|district boundary)\b/.test(queryText) && /\b(linkedin|jobs scraper|lead|sales|recruiting)\b/.test(text)) {
+    penalty += 95;
+  }
+
   if (!cat.includes('cryptocurrency') && /\b(wallet address|identicon|avatar|profile picture)\b/.test(queryText) && /\b(avatar|identicon|profile picture)\b/.test(text)) {
     penalty -= 20;
   }
@@ -926,6 +931,42 @@ function parsePublicApisReadme(readme) {
   return entries;
 }
 
+
+function parseApiMegaList(readme) {
+  const entries = [];
+  let category = '';
+  for (const raw of readme.split('\n')) {
+    const heading = raw.match(/^##\s+(.+?)\s*$/) || raw.match(/^###\s+(.+?)\s*$/);
+    if (heading) {
+      const text = heading[1].replace(/[#*_`]/g, '').trim();
+      if (text && !/table of contents|repository stats|star this|join my|contributing|license/i.test(text)) category = normalizeCategory(text.replace(/^\d+\.\s*/, ''));
+      continue;
+    }
+    if (!raw.startsWith('| [')) continue;
+    const cells = raw.split('|').slice(1, -1).map(c => c.trim());
+    if (cells.length < 2) continue;
+    if (/^-+$/.test(cells[0]) || /^api name$/i.test(cells[0])) continue;
+    const link = cells[0].match(/\[([^\]]+)\]\(([^)]+)\)/);
+    if (!link) continue;
+    const name = link[1].replace(/<[^>]+>/g, '').trim();
+    const url = link[2].trim();
+    const description = cleanDescription(cells[1] || `${name} API`);
+    if (!name || !/^https?:\/\//i.test(url)) continue;
+    entries.push({
+      name,
+      url,
+      description,
+      auth: 'Unknown',
+      https: /^https:/i.test(url),
+      cors: 'Unknown',
+      category: category || 'Unknown',
+      source: 'api-mega-list',
+      sourceWeight: 1,
+    });
+  }
+  return entries;
+}
+
 function parseApisGuru(data) {
   const entries = [];
   for (const [providerName, item] of Object.entries(data || {})) {
@@ -950,10 +991,11 @@ function parseApisGuru(data) {
 }
 
 async function buildData() {
-  const [pal, publicApisReadme, guru] = await Promise.allSettled([
+  const [pal, publicApisReadme, guru, megaList] = await Promise.allSettled([
     fetchJson(SOURCES.publicApiLists),
     fetchText(SOURCES.publicApisReadme),
     fetchJson(SOURCES.apisGuru),
+    fetchText(SOURCES.apiMegaList),
   ]);
   const entries = [];
   const sourceStatus = {};
@@ -971,6 +1013,11 @@ async function buildData() {
     sourceStatus['apis-guru'] = rows.length;
     entries.push(...rows);
   } else sourceStatus['apis-guru'] = `error: ${guru.reason.message}`;
+  if (megaList.status === 'fulfilled') {
+    const rows = parseApiMegaList(megaList.value);
+    sourceStatus['api-mega-list'] = rows.length;
+    entries.push(...rows);
+  } else sourceStatus['api-mega-list'] = `error: ${megaList.reason.message}`;
   sourceStatus.curated = ENRICHED_CURATED_APIS.length;
   entries.push(...ENRICHED_CURATED_APIS);
   const deduped = dedupe(entries).map(enrichApiMetadata);

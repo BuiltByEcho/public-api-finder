@@ -1,6 +1,6 @@
 {
   "name": "@builtbyecho/public-api-finder",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "Find free/public APIs for agents and prototypes.",
   "type": "module",
   "bin": {
