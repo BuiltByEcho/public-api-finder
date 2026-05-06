@@ -97,6 +97,10 @@ const cases = [
   { q: 'hotel search booking availability api', args: [], expectCategory: /travel|commerce|openapi/i, expectAnyName: /hotel|booking|amadeus/i },
   { q: 'recipe from pantry ingredients avoid allergens api', args: [], expectCategory: /food/i, expectAnyName: /spoonacular|edamam|recipe|meal/i },
   { q: 'calorie macro nutrition label parse api', args: [], expectCategory: /food|health|openapi/i, expectAnyName: /nutrition|edamam|spoonacular|food/i },
+  { q: 'wallet activity webhooks token transfers api', args: [], expectCategory: /cryptocurrency|blockchain/i, expectAnyName: /alchemy|moralis|etherscan|webhook|transfer/i },
+  { q: 'full page website screenshots responsive preview api', args: [], expectCategory: /development|media|documents|openapi/i, expectAnyName: /urlbox|microlink|screenshot|capture/i },
+  { q: 'brand colors fonts logo company domain enrichment', args: [], expectCategory: /business|marketing|development|openapi/i, expectAnyName: /brandfetch|clearbit|logo|brand/i },
+  { q: 'container image registry tags vulnerability data api', args: [], expectCategory: /development|security|openapi/i, expectAnyName: /docker|registry|vulnerab|hub/i },
 
 ];
 

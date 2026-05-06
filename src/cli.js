@@ -12,7 +12,25 @@ const SOURCES = {
 };
 const CACHE_PATH = process.env.PUBLIC_API_FINDER_CACHE || join(homedir(), '.cache', 'public-api-finder', 'all.json');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const DATA_VERSION = 10;
+const DATA_VERSION = 12;
+
+const ENRICHMENT_FIELDS = [
+  'tags',
+  'useCases',
+  'domains',
+  'exampleQueries',
+  'pricing',
+  'freeTier',
+  'authType',
+  'providerType',
+  'reliability',
+  'docsQuality',
+  'bestFor',
+  'avoidFor',
+  'rateLimit',
+  'apiBase',
+  'caveats',
+];
 
 
 const TARGETED_BOOSTS = [
@@ -24,7 +42,7 @@ const TARGETED_BOOSTS = [
   [/\b(address validation|normalize|usps)\b/, /\b(smarty|usps|address validation|street api|lob)\b/i, 80],
   [/\b(timezone|daylight savings|utc offset)\b/, /\b(timezonedb|timezone|utc offset|daylight savings)\b/i, 80],
   [/\b(company enrichment|business entity|secretary of state|brand colors|domain logo|logo from domain)\b/, /\b(opencorporates|brandfetch|clearbit|business entity|domain enrichment|brand logo)\b/i, 135],
-  [/\b(screenshot|website preview|link preview|open graph|website metadata)\b/, /\b(microlink|urlbox|screenshot|open graph|link preview|metadata)\b/i, 135],
+  [/\b(screenshot|screenshots|website preview|link preview|open graph|website metadata|responsive preview|full page)\b/, /\b(microlink|urlbox|screenshot|screenshots|open graph|link preview|website metadata|responsive previews|full-page)\b/i, 210],
   [/\b(favicon)\b/, /\b(microlink|urlbox|favicon)\b/i, 70],
   [/\b(pdf|html to pdf)\b/, /\b(pdfshift|api2pdf|html to pdf|document rendering)\b/i, 175],
   [/\b(ocr|receipt|extract text)\b/, /\b(ocr|vision|mindee|receipt|document)\b/i, 125],
@@ -34,9 +52,10 @@ const TARGETED_BOOSTS = [
   [/\b(moderate images|image moderation|nudity|violence|safe search)\b/, /\b(sightengine|safe search|nudity|violence|offensive content)\b/i, 175],
   [/\b(sanctions|ofac|pep|kyc|aml)\b/, /\b(opensanctions|ofac|sanctions|pep|kyc|aml|chainalysis)\b/i, 135],
   [/\b(wallet risk|crypto sanctions|blockchain wallet risk)\b/, /\b(chainalysis|trm|elliptic|sanctions|wallet risk)\b/i, 95],
+  [/\b(crypto token metadata|token metadata|token logos|coin logos|logos contract addresses)\b/, /\b(coinmarketcap|coingecko|coinpaprika|coinbase|token logos|coin metadata|coin images)\b/i, 90],
   [/\b(zipcode|zip code|postal code)\b/, /\b(zippopotam|zip|postal|census)\b/i, 80],
   [/\b(real estate|property value|rent estimate)\b/, /\b(rentcast|attom|zillow|real estate|property|rent estimate)\b/i, 135],
-  [/\b(mortgage|loan calculator|loan rate)\b/, /\b(mortgage|loan|rate)\b/i, 110],
+  [/\b(mortgage|mortgage rates|loan calculator|loan rate|home loan)\b/, /\b(mortgage|home loan|loan rate)\b/i, 230],
   [/\b(flight status|airport|arrivals|departures)\b/, /\b(aviationstack|amadeus|flight|airport|arrivals|departures)\b/i, 135],
   [/\b(hotel search|hotel booking|booking availability)\b/, /\b(amadeus|hotel|booking|availability)\b/i, 135],
 ];
@@ -50,7 +69,7 @@ const DOMAIN_PROFILES = {
   },
   finance: {
     triggers: ['stock', 'stocks', 'equity', 'equities', 'market', 'trading', 'ticker', 'tickers', 'quote', 'quotes', 'etf', 'forex', 'portfolio', 'options'],
-    categoryWeights: { finance: 16, financial: 16, 'currency exchange': 5 },
+    categoryWeights: { finance: 16, financial: 16, 'currency exchange': 5, cryptocurrency: -18, blockchain: -18 },
     boostTerms: ['stock', 'stocks', 'equity', 'market', 'trading', 'ticker', 'quote', 'quotes', 'forex', 'portfolio', 'options', 'historical'],
     weakTerms: ['quote', 'quotes', 'price', 'prices', 'market'],
   },
@@ -236,7 +255,7 @@ const DOMAIN_PROFILES = {
   },
   currency: {
     triggers: ['currency', 'currencies', 'exchange', 'forex', 'fx', 'rates', 'conversion'],
-    categoryWeights: { 'currency exchange': 24, finance: 3, financial: 3, cryptocurrency: -10 },
+    categoryWeights: { 'currency exchange': 24, finance: 3, financial: 3, cryptocurrency: -24 },
     boostTerms: ['currency', 'currencies', 'exchange rates', 'forex', 'fx', 'conversion'],
     weakTerms: ['rates', 'exchange'],
   },
@@ -261,12 +280,21 @@ const DOMAIN_PROFILES = {
 };
 
 const CURATED_APIS = [
-  { name: 'CoinMarketCap', url: 'https://coinmarketcap.com/api/', description: 'Popular cryptocurrency market data, rankings, quotes, metadata, and exchange data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 5 },
-  { name: 'CoinGecko', url: 'https://www.coingecko.com/en/api', description: 'Popular cryptocurrency prices, market data, tokens, exchanges, and DeFi data.', auth: 'apiKey', https: true, cors: 'Yes', category: 'Cryptocurrency', source: 'curated', sourceWeight: 5 },
-
-  { name: 'Coinpaprika', url: 'https://api.coinpaprika.com/', description: 'Cryptocurrency prices, coins, market data, exchanges, and historical data.', auth: 'No', https: true, cors: 'Yes', category: 'Cryptocurrency', source: 'curated', sourceWeight: 5 },
-  { name: 'CoinCap', url: 'https://docs.coincap.io/', description: 'Real-time cryptocurrency prices, assets, rates, exchanges, and markets.', auth: 'No', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 5 },
-  { name: 'Coinbase', url: 'https://docs.cloud.coinbase.com/', description: 'Coinbase crypto exchange, wallet, price, account, and trading APIs.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 5 },
+  { name: 'DexScreener', url: 'https://docs.dexscreener.com/api/reference', description: 'No-auth DEX token search, pair lookup, token prices, liquidity, volume, boosted tokens, and trending pool data across many chains.', auth: 'No', authType: 'none', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 8, providerType: 'dex-market-data', pricing: 'free public API', freeTier: 'public endpoints; documented rate limits include 60 rpm for profile/boost endpoints and higher pair/search limits', reliability: 'high', docsQuality: 'good', domains: ['crypto', 'defi', 'dex', 'on-chain'], tags: ['crypto prices', 'token price', 'dex pairs', 'liquidity pools', 'trending tokens', 'solana', 'ethereum', 'base', 'memecoins'], useCases: ['find token price by contract address', 'discover DEX pairs and liquidity', 'build crypto trend scanners', 'show token charts from pool data'], exampleQueries: ['crypto prices no auth', 'token price by contract address', 'dex liquidity pairs', 'trending solana tokens'], caveats: ['Not a centralized exchange order book; verify chain IDs and rate limits before production use.'] },
+  { name: 'CoinMarketCap', url: 'https://coinmarketcap.com/api/', description: 'Cryptocurrency market data for coin rankings, latest quotes, metadata, exchange data, fiat conversion, and global metrics.', auth: 'apiKey', authType: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 7, providerType: 'centralized-market-data', pricing: 'free tier plus paid plans', freeTier: 'limited free/basic plan; commercial usage may need paid tier', reliability: 'high', docsQuality: 'good', domains: ['crypto', 'market-data'], tags: ['crypto prices', 'coin rankings', 'market cap', 'quotes', 'exchange data', 'metadata'], useCases: ['rank coins by market cap', 'get latest cryptocurrency quotes', 'map token symbols to metadata'], exampleQueries: ['crypto market cap rankings', 'bitcoin latest quote', 'coin metadata api'], caveats: ['Requires API key; strict plan limits on free/basic tiers.'] },
+  { name: 'CoinGecko', url: 'https://www.coingecko.com/en/api', description: 'Cryptocurrency prices, market charts, coin metadata, exchanges, NFT data, derivatives, and CoinGecko on-chain DEX endpoints.', auth: 'apiKey', authType: 'apiKey', https: true, cors: 'Yes', category: 'Cryptocurrency', source: 'curated', sourceWeight: 7, providerType: 'centralized-and-onchain-market-data', pricing: 'demo/free access plus paid plans', freeTier: 'demo/public access with rate limits; paid for higher limits and pro data', reliability: 'high', docsQuality: 'good', domains: ['crypto', 'defi', 'nft', 'on-chain'], tags: ['crypto prices', 'market charts', 'coin metadata', 'exchanges', 'nft prices', 'on-chain dex data'], useCases: ['get common coin prices by ID', 'build market chart dashboards', 'combine centralized and on-chain crypto data'], exampleQueries: ['free crypto price api', 'coin market chart api', 'nft floor price api'], caveats: ['Coin IDs differ from symbols; free/demo limits can be tight for agents.'] },
+  { name: 'DexPaprika', url: 'https://docs.dexpaprika.com/api-reference/introduction', description: 'DEX and on-chain data API from Coinpaprika for token prices, liquidity pools, swaps, volumes, transactions, and networks across 30+ chains.', auth: 'No', authType: 'none', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 7, providerType: 'dex-market-data', pricing: 'free public API', freeTier: 'public REST endpoints', reliability: 'medium', docsQuality: 'good', domains: ['crypto', 'defi', 'dex', 'on-chain'], tags: ['dex prices', 'token price', 'liquidity pools', 'swaps', 'transactions', 'on-chain volume', 'solana'], useCases: ['fetch latest token price in USD by network and address', 'inspect DEX pools and swaps', 'build DeFi dashboards'], exampleQueries: ['dexpaprika token price', 'on chain liquidity pool api', 'solana dex price api'], caveats: ['Newer API; verify supported networks and endpoint stability for production.'] },
+  { name: 'DefiLlama', url: 'https://api-docs.defillama.com/', description: 'No-auth DeFi protocol TVL, chain TVL, yields, stablecoins, bridges, fees, revenue, DEX volumes, token prices, and protocol metrics.', auth: 'No', authType: 'none', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 7, providerType: 'defi-analytics', pricing: 'free public API plus pro API', freeTier: 'many public no-auth endpoints; Pro API for some advanced/beta metrics', reliability: 'high', docsQuality: 'good', domains: ['crypto', 'defi', 'open-data'], tags: ['defi tvl', 'protocol metrics', 'yields', 'stablecoins', 'bridges', 'fees', 'dex volume', 'token prices'], useCases: ['rank DeFi protocols by TVL', 'track chain TVL', 'find yield pools', 'monitor stablecoin supply'], exampleQueries: ['defi tvl no auth', 'stablecoin supply api', 'crypto yield pools api'], caveats: ['Methodology matters; TVL and category definitions should be explained to users.'] },
+  { name: 'GeckoTerminal', url: 'https://apiguide.geckoterminal.com/', description: 'Free public on-chain DEX API by CoinGecko for token prices, pools, OHLCV charts, trades, networks, and market data across many chains.', auth: 'No', authType: 'none', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 7, providerType: 'dex-market-data', pricing: 'free public API; higher limits via CoinGecko paid plans', freeTier: 'free public API, commonly documented around 30 calls/minute', reliability: 'high', docsQuality: 'good', domains: ['crypto', 'defi', 'dex', 'on-chain'], tags: ['token price', 'ohlcv', 'liquidity pools', 'dex trades', 'on-chain market data', 'new pools'], useCases: ['price any on-chain token by pool address', 'fetch OHLCV candles for DEX pools', 'discover pools by token address'], exampleQueries: ['free on-chain token price api', 'dex ohlcv api', 'pool address price api'], caveats: ['Public rate limit is low; use CoinGecko paid /onchain endpoints for heavier workloads.'] },
+  { name: 'Coinpaprika', url: 'https://api.coinpaprika.com/', description: 'No-auth cryptocurrency prices, coins, market data, exchanges, tickers, historical OHLCV, and global market data.', auth: 'No', authType: 'none', https: true, cors: 'Yes', category: 'Cryptocurrency', source: 'curated', sourceWeight: 6, providerType: 'centralized-market-data', pricing: 'free public endpoints plus paid plans', freeTier: 'free endpoints with rate limits', reliability: 'high', docsQuality: 'good', domains: ['crypto', 'market-data'], tags: ['crypto prices', 'tickers', 'ohlcv', 'coins', 'exchanges', 'historical data'], useCases: ['get no-auth crypto tickers', 'fetch OHLCV history', 'list coins and exchanges'], exampleQueries: ['no auth crypto prices', 'crypto historical ohlcv api'], caveats: ['Use IDs rather than ambiguous symbols where possible.'] },
+  { name: 'CoinCap', url: 'https://docs.coincap.io/', description: 'Real-time cryptocurrency prices, assets, rates, exchanges, markets, candles, and WebSocket market data.', auth: 'No', authType: 'none', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 6, providerType: 'centralized-market-data', pricing: 'free public API', freeTier: 'public REST/WebSocket endpoints with rate limits', reliability: 'medium', docsQuality: 'fair', domains: ['crypto', 'market-data'], tags: ['crypto prices', 'assets', 'exchanges', 'markets', 'candles', 'websocket'], useCases: ['simple no-auth asset prices', 'stream crypto prices', 'fetch exchange markets'], exampleQueries: ['simple crypto price websocket', 'no auth coin assets api'], caveats: ['Docs and service limits should be rechecked before relying on it.'] },
+  { name: 'Birdeye', url: 'https://docs.birdeye.so/', description: 'Multi-chain token market data API for Solana and EVM token prices, trades, OHLCV, wallet holdings, PnL, and trader analytics.', auth: 'apiKey', authType: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 6, providerType: 'dex-market-data', pricing: 'free/limited access plus paid plans', freeTier: 'API key required; verify current free credits and chain coverage', reliability: 'high', docsQuality: 'good', domains: ['crypto', 'defi', 'dex', 'wallet-analytics'], tags: ['solana token price', 'evm token price', 'wallet analytics', 'trades', 'ohlcv', 'pnl', 'smart money'], useCases: ['build Solana token dashboards', 'analyze wallet holdings and PnL', 'monitor DEX trades'], exampleQueries: ['solana token price api', 'wallet pnl api', 'birdeye trades api'], caveats: ['API key and plan limits apply; some advanced analytics may be paid.'] },
+  { name: '0x Swap API', url: 'https://0x.org/docs/api', description: 'DEX aggregator and swap API for quotes, prices, gasless swaps, liquidity routing, token metadata, and trading on EVM chains.', auth: 'apiKey', authType: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 6, providerType: 'swap-aggregator', pricing: 'free to start; monetization/spread and integrator terms vary', freeTier: 'API key access; verify current rate limits', reliability: 'high', docsQuality: 'good', domains: ['crypto', 'defi', 'dex', 'payments'], tags: ['swap quote', 'token swap', 'dex aggregator', 'evm', 'price quote', 'trading'], useCases: ['quote token swaps', 'embed EVM swap flows', 'compare route prices across DEX liquidity'], exampleQueries: ['crypto swap quote api', 'evm token swap api', 'dex aggregator api'], caveats: ['Not a general market-data corpus; execution requires wallet/signing and chain-specific handling.'] },
+  { name: 'Etherscan', url: 'https://docs.etherscan.io/', description: 'Ethereum explorer API for wallet balances, transactions, ERC20/ERC721/ERC1155 transfers, contract ABIs/source, gas, logs, and token data.', auth: 'apiKey', authType: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 6, providerType: 'block-explorer', pricing: 'free tier plus paid plans', freeTier: 'free API key with rate limits', reliability: 'high', docsQuality: 'good', domains: ['crypto', 'blockchain', 'ethereum'], tags: ['wallet balance', 'transactions', 'erc20 transfers', 'nft transfers', 'contract abi', 'gas price', 'logs'], useCases: ['look up Ethereum wallet transactions', 'fetch contract ABI', 'index token transfers'], exampleQueries: ['ethereum wallet balance api', 'erc20 transfers api', 'contract abi api'], caveats: ['Explorer API, not full RPC; rate limits and indexing delays apply.'] },
+  { name: 'Basescan', url: 'https://docs.etherscan.io/etherscan-v2/supported-chains', description: 'Base network explorer API via Etherscan v2 for Base wallet balances, transactions, token transfers, contract ABIs/source, gas, and logs.', auth: 'apiKey', authType: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 6, providerType: 'block-explorer', pricing: 'free tier plus paid plans', freeTier: 'free API key with rate limits', reliability: 'high', docsQuality: 'good', domains: ['crypto', 'blockchain', 'base', 'ethereum'], tags: ['base wallet balance', 'base transactions', 'erc20 transfers', 'contract abi', 'logs', 'block explorer'], useCases: ['query Base account activity', 'fetch Base contract ABIs', 'monitor Base token transfers'], exampleQueries: ['base wallet balance api', 'basescan token transfers', 'base contract abi api'], caveats: ['Uses Etherscan API model; chain ID support and limits should be verified.'] },
+  { name: 'Alchemy', url: 'https://docs.alchemy.com/reference', description: 'Blockchain developer APIs for JSON-RPC, NFT metadata, token balances, transfers, webhooks, simulation, account abstraction, and multi-chain node access.', auth: 'apiKey', authType: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 6, providerType: 'node-and-indexing-platform', pricing: 'free tier plus paid plans', freeTier: 'free developer tier with compute-unit limits', reliability: 'high', docsQuality: 'excellent', domains: ['crypto', 'blockchain', 'nft', 'webhooks'], tags: ['rpc', 'nft metadata', 'token balances', 'transfers', 'webhooks', 'simulation', 'ethereum', 'base', 'polygon', 'solana'], useCases: ['read blockchain state via RPC', 'fetch wallet token balances', 'get NFT metadata and owners', 'subscribe to address activity'], exampleQueries: ['nft metadata api', 'ethereum rpc api', 'wallet token balances api'], caveats: ['Powerful but not no-auth; price and quotas depend on chain and method.'] },
+  { name: 'Moralis', url: 'https://docs.moralis.com/web3-data-api', description: 'Web3 data APIs for wallet balances, token prices, NFTs, transfers, DeFi positions, streams, and multi-chain indexed blockchain data.', auth: 'apiKey', authType: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 6, providerType: 'web3-data-platform', pricing: 'free tier plus paid plans', freeTier: 'free account tier with request/compute limits', reliability: 'high', docsQuality: 'good', domains: ['crypto', 'blockchain', 'nft', 'wallet-analytics'], tags: ['wallet balances', 'token price', 'nft metadata', 'transfers', 'defi positions', 'streams', 'multi-chain'], useCases: ['build wallet portfolio views', 'fetch token/NFT metadata', 'monitor address events with streams'], exampleQueries: ['wallet portfolio api', 'multi chain nft api', 'defi positions api'], caveats: ['Commercial platform; validate plan limits and supported chains.'] },
+  { name: 'Coinbase', url: 'https://docs.cdp.coinbase.com/', description: 'Coinbase developer APIs for exchange data, wallets, onramp, trading, payments, and hosted crypto infrastructure.', auth: 'apiKey', authType: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency', source: 'curated', sourceWeight: 5, providerType: 'exchange-and-wallet-platform', pricing: 'varies by Coinbase product', freeTier: 'developer access varies by API', reliability: 'high', docsQuality: 'good', domains: ['crypto', 'exchange', 'wallets', 'payments'], tags: ['exchange prices', 'wallets', 'trading', 'onramp', 'accounts', 'payments'], useCases: ['integrate Coinbase account/trading flows', 'fetch exchange market data', 'build crypto onramp experiences'], exampleQueries: ['coinbase exchange api', 'crypto onramp api', 'coinbase wallet api'], caveats: ['Product families differ; many endpoints require user auth or compliance review.'] },
   { name: 'Alpha Vantage', url: 'https://www.alphavantage.co/documentation/', description: 'Stock, ETF, forex, crypto, technical indicators, and market data API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Finance', source: 'curated', sourceWeight: 5 },
   { name: 'Polygon', url: 'https://polygon.io/docs/', description: 'Stock market, options, forex, crypto, tickers, trades, aggregates, and historical market data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Finance', source: 'curated', sourceWeight: 5 },
   { name: 'Twelve Data', url: 'https://twelvedata.com/docs', description: 'Stock, forex, ETF, index, and crypto market data with real-time and historical prices.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Finance', source: 'curated', sourceWeight: 5 },
@@ -393,8 +421,179 @@ const CURATED_APIS = [
   { name: 'Amadeus Travel APIs', url: 'https://developers.amadeus.com/self-service', description: 'Flight search, airport data, hotel search, hotel booking, availability, pricing, and travel APIs.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Travel', source: 'curated', sourceWeight: 5 },
 ];
 
+
+const CURATED_CATEGORY_ENRICHMENTS = {
+  'AI': { providerType: 'ai-media-platform', domains: ['ai', 'media', 'automation'], tags: ['AI', 'media generation', 'analysis', 'automation'], useCases: ['add AI capabilities to apps', 'process user-generated media'], bestFor: 'AI/media features where a managed API is faster than self-hosting models.', caveats: ['Most AI APIs require keys and have usage-based pricing; confirm model availability and content policies.'] },
+  'Anime': { providerType: 'anime-metadata', domains: ['media', 'anime', 'entertainment'], tags: ['anime search', 'manga', 'characters', 'rankings', 'metadata'], useCases: ['search anime and manga catalogs', 'show character and title metadata'], bestFor: 'Anime/manga catalog search and fan-app metadata.', caveats: ['Unofficial catalog APIs can have stricter rate limits or attribution requirements.'] },
+  'Animals': { providerType: 'demo-media-api', domains: ['animals', 'media', 'test-data'], tags: ['random images', 'cat images', 'dog images', 'breeds', 'demo data'], useCases: ['add random animal images to demos', 'prototype media cards without auth'], bestFor: 'Lightweight demos and playful placeholders.', caveats: ['Not a structured veterinary or breed reference API.'] },
+  'Authentication': { providerType: 'identity-platform', domains: ['auth', 'identity', 'security'], tags: ['auth', 'OAuth', 'OpenID Connect', 'login', 'user profiles', 'social auth'], useCases: ['add login and signup flows', 'manage user identities and sessions'], bestFor: 'Production identity, OAuth/OIDC, and user-management integrations.', caveats: ['Usually requires account setup and environment-specific app configuration.'] },
+  'Books': { providerType: 'book-metadata', domains: ['books', 'open-data', 'education'], tags: ['books', 'ISBN', 'authors', 'covers', 'ebooks', 'public domain'], useCases: ['look up books by ISBN or title', 'build reading/library catalogs'], bestFor: 'Book discovery, metadata, covers, and public-domain ebook projects.', caveats: ['Coverage varies by source and may require reconciliation across editions.'] },
+  'Business': { providerType: 'business-enrichment', domains: ['business', 'company-data', 'branding'], tags: ['company enrichment', 'business entity', 'domain logo', 'brand colors', 'public records'], useCases: ['enrich companies from domains', 'look up legal entities and brand assets'], bestFor: 'Company identity, public business records, and brand enrichment.', caveats: ['Business coverage and freshness vary by country and provider.'] },
+  'Calendar': { providerType: 'calendar-data', domains: ['calendar', 'dates', 'productivity'], tags: ['calendar events', 'holidays', 'observances', 'dates', 'scheduling'], useCases: ['create event workflows', 'show public holidays by country'], bestFor: 'Calendar integrations, holiday lookup, and scheduling context.', caveats: ['OAuth calendar APIs require user consent; holiday definitions differ by locale.'] },
+  'Communication': { providerType: 'messaging-platform', domains: ['communications', 'messaging', 'notifications'], tags: ['SMS', 'MMS', 'WhatsApp', 'messaging', 'notifications', 'webhooks'], useCases: ['send transactional SMS', 'track message delivery status'], bestFor: 'Reliable customer messaging and notification workflows.', caveats: ['Messaging APIs may require compliance registration, phone numbers, and regional rules.'] },
+  'Cryptocurrency': { providerType: 'crypto-data-platform', domains: ['crypto', 'blockchain', 'defi'], tags: ['crypto prices', 'wallet balances', 'transactions', 'token metadata', 'on-chain data'], useCases: ['build wallet, token, or market-data tools', 'query blockchain activity'], bestFor: 'Crypto market data, wallet data, and blockchain integrations.', caveats: ['Chain coverage, indexing latency, and plan limits vary significantly.'] },
+  'Currency Exchange': { providerType: 'fiat-fx-rates', domains: ['finance', 'currency', 'open-data'], tags: ['exchange rates', 'currency conversion', 'forex', 'historical rates', 'fiat'], useCases: ['convert currencies', 'show historical FX rates'], bestFor: 'Fiat exchange-rate conversion and historical rate widgets.', caveats: ['Do not use fiat FX APIs as crypto price feeds unless explicitly supported.'] },
+  'Development': { providerType: 'developer-utility', domains: ['developer-tools', 'utility', 'web'], tags: ['developer tools', 'metadata', 'automation', 'webhooks', 'testing'], useCases: ['prototype developer utilities', 'enrich apps with web or repo metadata'], bestFor: 'Agent and builder utilities that need simple HTTP integrations.', caveats: ['Developer utility APIs vary widely; confirm endpoint stability and terms.'] },
+  'Dictionaries': { providerType: 'dictionary-language-data', domains: ['language', 'education', 'reference'], tags: ['dictionary', 'definitions', 'phonetics', 'pronunciation', 'word meanings'], useCases: ['look up word definitions', 'add dictionary cards to education apps'], bestFor: 'Simple word-definition and pronunciation lookup.', caveats: ['May not include synonyms/antonyms unless documented.'] },
+  'Documents': { providerType: 'document-processing', domains: ['documents', 'automation', 'media'], tags: ['PDF', 'OCR', 'HTML to PDF', 'document rendering', 'text extraction'], useCases: ['convert HTML to PDF', 'extract text from images or scanned documents'], bestFor: 'Document automation where hosted rendering/OCR is acceptable.', caveats: ['Sensitive documents need privacy review and provider data-retention checks.'] },
+  'Email': { providerType: 'email-utility', domains: ['email', 'communications', 'testing'], tags: ['email validation', 'deliverability', 'temporary email', 'MX records', 'inbox testing'], useCases: ['validate signup email addresses', 'create disposable inboxes for tests'], bestFor: 'Email validation, deliverability checks, and test inbox workflows.', caveats: ['Validation results are probabilistic; do not block users solely on one provider.'] },
+  'Entertainment': { providerType: 'entertainment-metadata', domains: ['media', 'entertainment'], tags: ['movies', 'TV', 'jokes', 'quotes', 'metadata', 'search'], useCases: ['build entertainment catalogs', 'add fun sample content to demos'], bestFor: 'Media discovery or fun content for prototypes.', caveats: ['Licensing and attribution requirements vary for media assets.'] },
+  'Environment': { providerType: 'environmental-data', domains: ['environment', 'climate', 'open-data'], tags: ['air quality', 'carbon intensity', 'emissions', 'electricity grid', 'pollutants'], useCases: ['show air quality by location', 'track carbon intensity and energy mix'], bestFor: 'Environmental dashboards and sustainability context.', caveats: ['Sensor coverage and regional freshness vary.'] },
+  'Finance': { providerType: 'financial-market-data', domains: ['finance', 'markets', 'banking'], tags: ['stock quotes', 'market data', 'forex', 'financial data', 'historical prices'], useCases: ['fetch market quotes and candles', 'build finance dashboards'], bestFor: 'Financial market data, banking workflows, or tax calculations depending on provider.', caveats: ['Market-data licensing and redistribution restrictions are common.'] },
+  'Financial': { providerType: 'financial-validation', domains: ['finance', 'payments', 'banking'], tags: ['bank data', 'IBAN validation', 'routing', 'payments validation', 'SWIFT'], useCases: ['validate bank-account identifiers', 'support payment setup flows'], bestFor: 'Bank identifier validation and payment metadata.', caveats: ['Validation does not guarantee account ownership or transfer success.'] },
+  'Food': { providerType: 'food-product-data', domains: ['food', 'nutrition', 'commerce'], tags: ['food products', 'barcodes', 'ingredients', 'nutrition', 'labels'], useCases: ['scan food barcodes', 'show ingredients and nutrition labels'], bestFor: 'Nutrition, product barcode, and grocery metadata.', caveats: ['Crowdsourced product data can be incomplete or region-specific.'] },
+  'Food & Drink': { providerType: 'food-and-recipe-data', domains: ['food', 'nutrition', 'recipes'], tags: ['recipes', 'ingredients', 'nutrition', 'meal planning', 'barcodes'], useCases: ['find recipes by ingredients', 'analyze nutrition or product labels'], bestFor: 'Recipe, ingredient, nutrition, and grocery-product features.', caveats: ['Recipe licensing and nutrition precision vary by provider.'] },
+  'Geocoding': { providerType: 'location-data', domains: ['maps', 'geocoding', 'location'], tags: ['geocoding', 'reverse geocoding', 'routing', 'places', 'addresses', 'coordinates'], useCases: ['convert addresses to coordinates', 'find places or routes near a user'], bestFor: 'Maps, address lookup, places, routing, and timezone/location utilities.', caveats: ['Respect geocoding usage policies, attribution, and caching restrictions.'] },
+  'Government': { providerType: 'government-open-data', domains: ['government', 'open-data', 'civic'], tags: ['government data', 'census', 'elections', 'public records', 'federal data'], useCases: ['query civic datasets', 'build dashboards from public government data'], bestFor: 'US government, civic, census, and public-record datasets.', caveats: ['Dataset freshness and field definitions differ by agency.'] },
+  'Jobs': { providerType: 'jobs-search', domains: ['jobs', 'employment', 'labor-market'], tags: ['jobs', 'job search', 'salary', 'remote jobs', 'hiring', 'employment'], useCases: ['search job listings', 'show salary or labor-market data'], bestFor: 'Job boards, hiring dashboards, and employment search tools.', caveats: ['Job freshness and deduplication often require additional filtering.'] },
+  'Language': { providerType: 'translation-api', domains: ['language', 'nlp', 'text'], tags: ['translation', 'language detection', 'multilingual', 'text translation'], useCases: ['translate user text', 'detect language for content routing'], bestFor: 'Translation and lightweight multilingual features.', caveats: ['Hosted instances and language pairs may differ; verify rate limits.'] },
+  'Logistics': { providerType: 'shipment-tracking', domains: ['logistics', 'shipping', 'commerce'], tags: ['package tracking', 'shipment status', 'carrier detection', 'labels', 'rates'], useCases: ['track packages across carriers', 'show shipping status in commerce apps'], bestFor: 'Shipment tracking, carrier metadata, and logistics workflows.', caveats: ['Carrier coverage and webhook behavior vary by plan.'] },
+  'Media': { providerType: 'media-search', domains: ['media', 'audio', 'images'], tags: ['media search', 'audio', 'images', 'podcasts', 'metadata'], useCases: ['search media catalogs', 'enrich apps with audio/image metadata'], bestFor: 'Media search, metadata, and open-license asset discovery.', caveats: ['Asset licensing must be checked before redistribution.'] },
+  'News': { providerType: 'news-search', domains: ['news', 'media', 'content'], tags: ['news', 'headlines', 'article search', 'topics', 'publishers'], useCases: ['search recent articles', 'build news dashboards by topic or country'], bestFor: 'Headline and article search across publishers or a single outlet.', caveats: ['Free tiers may restrict historical search, commercial use, or full article content.'] },
+  'Open Data': { providerType: 'open-data-api', domains: ['open-data', 'government', 'civic'], tags: ['open data', 'public records', 'government data', 'campaign finance'], useCases: ['query public datasets', 'build civic data explorers'], bestFor: 'Public datasets and civic/open-data integrations.', caveats: ['Open data still needs source attribution and schema verification.'] },
+  'Payments': { providerType: 'payment-platform', domains: ['payments', 'commerce', 'finance'], tags: ['payments', 'checkout', 'billing', 'invoices', 'subscriptions', 'webhooks'], useCases: ['create checkout flows', 'manage subscriptions and invoices'], bestFor: 'Commerce payments, billing, checkout, and subscription workflows.', caveats: ['Payment APIs require account setup, compliance checks, and secure server-side handling.'] },
+  'Photography': { providerType: 'image-search', domains: ['images', 'photography', 'media'], tags: ['image search', 'stock photos', 'photos', 'collections', 'media assets'], useCases: ['search stock photos', 'populate prototypes with licensed images'], bestFor: 'Image search and photography assets for apps or demos.', caveats: ['Review license, attribution, and hotlinking rules for each asset.'] },
+  'Podcasts': { providerType: 'podcast-directory', domains: ['podcasts', 'audio', 'media'], tags: ['podcast search', 'episodes', 'RSS', 'show metadata', 'recommendations'], useCases: ['search podcasts and episodes', 'resolve podcast RSS metadata'], bestFor: 'Podcast discovery, episode metadata, and audio-directory features.', caveats: ['Some podcast APIs require paid plans for full search or transcripts.'] },
+  'Real Estate': { providerType: 'real-estate-data', domains: ['real-estate', 'property', 'finance'], tags: ['property data', 'rent estimates', 'property values', 'comparables', 'ownership'], useCases: ['estimate rent or property values', 'enrich addresses with property records'], bestFor: 'Real-estate valuation, rental comps, and property-record enrichment.', caveats: ['Coverage, licensing, and allowed use vary by market and provider.'] },
+  'Security': { providerType: 'security-intelligence', domains: ['security', 'risk', 'compliance'], tags: ['security', 'threat intelligence', 'vulnerability data', 'risk scoring', 'compliance'], useCases: ['look up vulnerabilities or risky indicators', 'screen entities for compliance'], bestFor: 'Security enrichment, vulnerability lookup, and compliance screening.', caveats: ['Security signals can be stale or probabilistic; verify critical findings.'] },
+  'Shopping': { providerType: 'commerce-product-data', domains: ['commerce', 'shopping', 'products'], tags: ['ecommerce', 'products', 'barcode lookup', 'carts', 'catalog', 'pricing'], useCases: ['prototype ecommerce products/carts', 'look up products by barcode'], bestFor: 'Product catalog, ecommerce demo, and barcode lookup workflows.', caveats: ['Product pricing and availability are often incomplete or region-specific.'] },
+  'Sports & Fitness': { providerType: 'sports-data', domains: ['sports', 'scores', 'stats'], tags: ['sports scores', 'fixtures', 'standings', 'players', 'teams', 'odds'], useCases: ['show fixtures and scores', 'build team/player stat dashboards'], bestFor: 'Sports fixtures, standings, team/player stats, and scores.', caveats: ['League coverage, live updates, and odds may require paid plans.'] },
+  'Telecom': { providerType: 'telecom-utility', domains: ['telecom', 'communications', 'security'], tags: ['SMS verification', 'OTP', 'phone validation', 'carrier lookup', 'line type'], useCases: ['verify phone numbers with OTP', 'validate phone number metadata'], bestFor: 'Phone verification, number validation, and telecom metadata.', caveats: ['Phone verification has fraud and regional compliance considerations.'] },
+  'Test Data': { providerType: 'test-data-api', domains: ['test-data', 'prototyping', 'frontend'], tags: ['test data', 'fake users', 'mock API', 'sample data', 'frontend demo'], useCases: ['seed prototypes with sample data', 'test frontend API calls without a backend'], bestFor: 'Demos, tests, tutorials, and placeholder data.', caveats: ['Do not treat generated/fake data as production-grade or stable identifiers.'] },
+  'Text Analysis': { providerType: 'text-analysis-api', domains: ['ai', 'nlp', 'moderation'], tags: ['text moderation', 'toxicity', 'comment analysis', 'safety scoring', 'NLP'], useCases: ['moderate user comments', 'rank content by toxicity or abuse risk'], bestFor: 'Comment moderation and content-safety signals.', caveats: ['Moderation scores require human calibration and appeal paths for serious decisions.'] },
+  'Transportation': { providerType: 'transportation-data', domains: ['transportation', 'transit', 'mobility'], tags: ['transit', 'GTFS', 'routes', 'stops', 'vehicle data', 'VIN decode'], useCases: ['show transit routes/stops', 'decode VINs or vehicle recall data'], bestFor: 'Transit, vehicle, and transportation-data projects.', caveats: ['Realtime transit and vehicle ownership data may not be available.'] },
+  'Travel': { providerType: 'travel-data', domains: ['travel', 'flights', 'hotels'], tags: ['flight status', 'airports', 'hotel search', 'booking', 'travel pricing'], useCases: ['search flights or hotels', 'track flight status and airport metadata'], bestFor: 'Travel search, flight status, airport, and hotel availability workflows.', caveats: ['Booking and fare data require careful terms, caching, and commercial-use review.'] },
+  'URL Shortener': { providerType: 'url-shortener', domains: ['developer-tools', 'links', 'marketing'], tags: ['URL shortener', 'short links', 'branded links', 'redirects', 'link analytics'], useCases: ['create short links', 'track link analytics and redirects'], bestFor: 'Short links, campaign links, QR/link workflows, and branded redirects.', caveats: ['Abuse controls and branded-domain setup may affect automation.'] },
+  'Weather': { providerType: 'weather-data-api', domains: ['weather', 'climate', 'location'], tags: ['weather forecast', 'current conditions', 'historical weather', 'weather alerts', 'climate'], useCases: ['fetch forecasts and current conditions', 'show severe alerts or historical weather'], bestFor: 'Weather forecasts, alerts, current conditions, and climate/history data.', caveats: ['Forecast models, geography coverage, and alert availability vary by provider.'] },
+};
+
+const CURATED_API_ENRICHMENTS = {
+  'Alpha Vantage': { providerType: 'financial-market-data', tags: ['stock quotes', 'technical indicators', 'forex', 'crypto prices', 'time series'], useCases: ['fetch stock/ETF time series', 'calculate technical indicator dashboards'], caveats: ['Free API key limits are tight; intraday data may be limited.'] },
+  'Polygon': { providerType: 'market-data-platform', tags: ['stock market data', 'options', 'forex', 'crypto', 'aggregates', 'trades'], useCases: ['fetch intraday aggregates and trades', 'build multi-asset market dashboards'], caveats: ['Many realtime/historical datasets are paid or exchange-licensed.'] },
+  'Twelve Data': { providerType: 'market-data-platform', tags: ['stock quotes', 'forex', 'ETF', 'indices', 'crypto', 'technical indicators'], useCases: ['fetch realtime and historical prices', 'query technical indicators across asset classes'] },
+  'Tradier': { providerType: 'brokerage-and-market-data', tags: ['equity quotes', 'options chains', 'brokerage trading', 'market data'], useCases: ['build US equities/options workflows', 'integrate brokerage account trading'], caveats: ['Trading/account endpoints need OAuth and brokerage approval.'] },
+  'Finnhub': { providerType: 'financial-market-data', tags: ['stock quotes', 'company fundamentals', 'earnings', 'financial statements', 'market news'], useCases: ['fetch company fundamentals', 'combine quotes with finance news'] },
+  'Stooq': { providerType: 'free-market-data-csv', tags: ['free stock quotes', 'historical prices', 'CSV downloads', 'forex', 'indices'], useCases: ['download historical CSV price data', 'prototype no-auth finance charts'], bestFor: 'No-auth historical market-data prototypes.' },
+  'Open-Meteo': { providerType: 'weather-and-geocoding', tags: ['weather forecast', 'historical weather', 'climate', 'geocoding', 'marine weather'], useCases: ['fetch hourly forecasts without an API key', 'combine weather and geocoding for frontend apps'], bestFor: 'No-auth, frontend-friendly forecast and climate data.' },
+  'National Weather Service API': { providerType: 'government-weather-api', tags: ['US weather alerts', 'forecast', 'observations', 'radar stations', 'gridpoints'], useCases: ['show US severe weather alerts', 'fetch official US forecasts'], bestFor: 'Official US weather alerts and forecasts.', caveats: ['US-only and expects a descriptive User-Agent.'] },
+  'Pirate Weather': { providerType: 'weather-forecast-api', tags: ['weather forecast', 'Dark Sky compatible', 'current conditions', 'minutely forecast'], useCases: ['replace Dark Sky-style forecast integrations'], caveats: ['Verify current free limits and attribution requirements.'] },
+  'Geocod.io': { providerType: 'geocoding-and-census', tags: ['forward geocoding', 'reverse geocoding', 'address parsing', 'census data', 'coordinates'], useCases: ['geocode US/Canada addresses', 'append Census geographies to addresses'] },
+  'GraphHopper': { providerType: 'routing-platform', tags: ['routing', 'navigation', 'route optimization', 'matrix', 'map matching', 'geocoding'], useCases: ['calculate routes and distance matrices', 'optimize delivery stops'] },
+  'GraphQL Jobs': { providerType: 'jobs-graphql-api', tags: ['jobs', 'GraphQL', 'developer jobs', 'job listings'], useCases: ['search GraphQL job listings', 'prototype jobs search UIs'], caveats: ['Check service freshness before building around it.'] },
+  'Search.gov Jobs': { providerType: 'government-jobs-search', tags: ['government jobs', 'federal jobs', 'job search', 'US jobs'], useCases: ['search US government job openings'] },
+  'API-FOOTBALL': { providerType: 'soccer-data-api', tags: ['soccer fixtures', 'standings', 'teams', 'players', 'odds', 'predictions'], useCases: ['show soccer fixtures and standings', 'fetch match odds and predictions'] },
+  'Football-Data': { providerType: 'soccer-data-api', tags: ['football fixtures', 'competitions', 'teams', 'matches', 'standings', 'scores'], useCases: ['show European football fixtures', 'build standings tables'] },
+  'TVMaze': { providerType: 'tv-metadata-api', tags: ['TV shows', 'episodes', 'schedule', 'cast', 'show search'], useCases: ['search TV shows', 'show episode schedules and cast metadata'] },
+  'Jikan': { providerType: 'anime-metadata-api', tags: ['anime search', 'manga search', 'MyAnimeList', 'characters', 'rankings'], useCases: ['search anime/manga without auth', 'show rankings and character metadata'] },
+  'AniList': { providerType: 'anime-graphql-api', tags: ['anime GraphQL', 'manga', 'characters', 'studios', 'user lists'], useCases: ['query anime and manga metadata with GraphQL', 'integrate user list features'], caveats: ['OAuth is required for user-specific list operations.'] },
+  'Data.gov': { providerType: 'government-api-catalog', tags: ['government data', 'federal APIs', 'public datasets', 'api.data.gov key'], useCases: ['discover US federal public APIs', 'use a shared API key gateway for agencies'] },
+  'Open Food Facts': { providerType: 'food-product-database', tags: ['barcode lookup', 'ingredients', 'nutrition', 'allergens', 'food labels'], useCases: ['scan food products by barcode', 'show ingredient and nutrition facts'], bestFor: 'No-auth food barcode and nutrition/product metadata.' },
+  'Barcode Lookup': { providerType: 'product-barcode-lookup', tags: ['barcode lookup', 'UPC', 'EAN', 'product catalog', 'pricing', 'images'], useCases: ['look up retail products by UPC/EAN', 'enrich product cards with images and prices'] },
+  'OpenWeather': { providerType: 'weather-platform', tags: ['current weather', 'forecast', 'historical weather', 'weather alerts', 'geocoding', 'weather maps'], useCases: ['fetch current weather and forecasts', 'add weather map layers'], caveats: ['API key required; One Call and historical data limits vary.'] },
+  'The Guardian Open Platform': { providerType: 'publisher-content-api', tags: ['Guardian articles', 'sections', 'tags', 'article search', 'publisher content'], useCases: ['search Guardian content by section/tag', 'build publisher-specific news widgets'] },
+  'TMDb': { providerType: 'movie-tv-metadata', tags: ['movie metadata', 'TV metadata', 'posters', 'cast', 'ratings', 'discovery'], useCases: ['build movie/TV discovery apps', 'fetch posters and cast metadata'] },
+  'OMDb': { providerType: 'movie-tv-metadata', tags: ['IMDb lookup', 'movie metadata', 'TV metadata', 'ratings', 'title search'], useCases: ['look up titles by IMDb ID', 'prototype movie metadata cards'] },
+  'iTunes Search API': { providerType: 'apple-media-search', tags: ['podcast search', 'music search', 'audiobooks', 'apps', 'episodes'], useCases: ['search Apple/iTunes media metadata without auth'] },
+  'OpenStreetMap Nominatim': { providerType: 'open-geocoding-api', tags: ['geocoding', 'reverse geocoding', 'OpenStreetMap', 'address lookup', 'places'], useCases: ['geocode addresses with OSM data', 'reverse geocode coordinates no-auth'], caveats: ['Public Nominatim has strict usage policy; self-host for heavy workloads.'] },
+  'Mapbox': { providerType: 'maps-location-platform', tags: ['maps', 'geocoding', 'routing', 'navigation', 'tiles', 'places'], useCases: ['add maps/geocoding to apps', 'build route and places search experiences'] },
+  'Foursquare Places': { providerType: 'places-search-api', tags: ['places', 'restaurants', 'nearby search', 'opening hours', 'photos', 'categories'], useCases: ['find nearby venues/restaurants', 'enrich places with hours and photos'] },
+  'USAJOBS': { providerType: 'federal-jobs-api', tags: ['federal jobs', 'government jobs', 'hiring', 'job search'], useCases: ['search federal job listings', 'build government jobs alerts'] },
+  'Adzuna': { providerType: 'jobs-market-data', tags: ['job search', 'salary data', 'vacancies', 'employment market', 'remote jobs'], useCases: ['search job listings by country', 'compare salary and vacancy trends'] },
+  'TheSportsDB': { providerType: 'sports-metadata-api', tags: ['sports teams', 'leagues', 'events', 'scores', 'players', 'media'], useCases: ['show team/player metadata', 'build sports event dashboards'] },
+  'balldontlie': { providerType: 'basketball-stats-api', tags: ['NBA', 'basketball stats', 'players', 'teams', 'games', 'seasons'], useCases: ['fetch NBA teams/players/games', 'prototype basketball stats apps'] },
+  'Census Data API': { providerType: 'census-demographics-api', tags: ['census', 'ACS', 'demographics', 'geography', 'economic data'], useCases: ['query demographic variables by geography', 'build Census/ACS dashboards'] },
+  'OpenFEC': { providerType: 'campaign-finance-api', tags: ['campaign finance', 'candidates', 'committees', 'filings', 'donations', 'elections'], useCases: ['track campaign donations and filings', 'search candidates and committees'] },
+  'Fake Store API': { providerType: 'fake-ecommerce-api', tags: ['fake store', 'ecommerce products', 'carts', 'users', 'frontend demo'], useCases: ['prototype shopping carts and product pages without a backend'] },
+  'Stripe': { providerType: 'payment-platform', tags: ['payments', 'checkout', 'billing', 'subscriptions', 'invoices', 'webhooks'], useCases: ['create checkout sessions', 'manage recurring billing and invoices'], bestFor: 'Modern card payments, billing, subscriptions, and payment webhooks.' },
+  'PayPal': { providerType: 'payment-platform', tags: ['payments', 'checkout orders', 'subscriptions', 'payouts', 'invoices', 'disputes'], useCases: ['accept PayPal checkout', 'create orders, payouts, or invoices'] },
+  'Twilio Messaging': { providerType: 'sms-messaging-platform', tags: ['SMS', 'MMS', 'WhatsApp', 'message status', 'phone numbers', 'webhooks'], useCases: ['send SMS/MMS/WhatsApp messages', 'track delivery status with webhooks'] },
+  'WhoisXML API': { providerType: 'domain-intelligence-api', tags: ['WHOIS', 'DNS lookup', 'domain availability', 'SSL certificates', 'threat intelligence'], useCases: ['enrich domains with WHOIS/DNS data', 'screen domains for security workflows'] },
+  'Google DNS': { providerType: 'dns-over-https', tags: ['DNS over HTTPS', 'DNS records', 'domain resolution', 'public resolver'], useCases: ['resolve DNS records from frontend/server apps', 'debug domain DNS without auth'] },
+  'SSL Labs': { providerType: 'tls-assessment-api', tags: ['SSL certificates', 'TLS configuration', 'HTTPS scan', 'security assessment'], useCases: ['grade website TLS configuration', 'monitor certificate/security posture'] },
+  'IPinfo': { providerType: 'ip-intelligence-api', tags: ['IP geolocation', 'ASN', 'company', 'carrier', 'privacy', 'hosted domains'], useCases: ['geolocate IP addresses', 'enrich traffic with ASN/company metadata'] },
+  'IPQualityScore': { providerType: 'ip-risk-scoring', tags: ['IP reputation', 'VPN detection', 'proxy detection', 'TOR', 'fraud score', 'bot detection'], useCases: ['score IP risk during signup', 'detect VPN/proxy/TOR traffic'] },
+  'proxycheck.io': { providerType: 'ip-proxy-detection', tags: ['proxy detection', 'VPN detection', 'TOR', 'datacenter IP', 'risk score'], useCases: ['detect anonymous IPs', 'flag risky login/session traffic'] },
+  'spoonacular': { providerType: 'recipe-nutrition-api', tags: ['recipes', 'ingredients', 'meal planning', 'nutrition', 'grocery products', 'allergens'], useCases: ['find recipes by pantry ingredients', 'analyze meal nutrition and allergens'] },
+  'QuickChart QR Code': { providerType: 'qr-code-generator', tags: ['QR code', 'QR images', 'charts', 'frontend demo', 'no auth'], useCases: ['generate QR codes for URLs/text', 'embed QR images in frontend demos'] },
+  'GoQR.me': { providerType: 'qr-code-generator', tags: ['QR code', 'text to QR', 'URL QR', 'contact data'], useCases: ['generate simple QR images without auth'] },
+  'Transitland': { providerType: 'transit-open-data-api', tags: ['transit', 'GTFS', 'operators', 'routes', 'stops', 'schedules'], useCases: ['query transit routes/stops', 'build public transportation maps'] },
+  'Transport API': { providerType: 'uk-transport-api', tags: ['UK trains', 'bus departures', 'routes', 'stops', 'journey planning'], useCases: ['show UK train/bus departures', 'plan UK transport journeys'] },
+  'DiceBear': { providerType: 'avatar-generator', tags: ['avatars', 'identicons', 'SVG', 'placeholder images', 'profile pictures'], useCases: ['generate deterministic avatars from names/seeds', 'add placeholder profile pictures'] },
+  'Boring Avatars': { providerType: 'avatar-generator', tags: ['avatars', 'identicons', 'SVG', 'seeded avatar', 'wallet-like strings'], useCases: ['generate seeded SVG avatars', 'display identicons for users or wallet-like IDs'] },
+  'Alchemy NFT API': { providerType: 'nft-data-api', tags: ['NFT metadata', 'NFT owners', 'contract data', 'token IDs', 'wallet NFTs', 'transfers'], useCases: ['fetch NFTs owned by a wallet', 'resolve NFT contract/token metadata'] },
+  'NHTSA Vehicle API': { providerType: 'vehicle-government-data', tags: ['VIN decode', 'vehicle recalls', 'manufacturers', 'models', 'safety data'], useCases: ['decode VINs without auth', 'look up vehicle recall and safety data'] },
+  'Openverse': { providerType: 'open-license-media-search', tags: ['open licensed images', 'public domain', 'audio search', 'image search', 'media metadata'], useCases: ['find openly licensed images/audio', 'build attribution-aware media search'] },
+  'LibreTranslate': { providerType: 'translation-api', tags: ['translation', 'language detection', 'text translation', 'multilingual'], useCases: ['translate text between languages', 'detect source language'] },
+  'Perspective API': { providerType: 'text-moderation-api', tags: ['toxicity', 'text moderation', 'comment analysis', 'abuse detection', 'safety scoring'], useCases: ['score comments for toxicity', 'moderate user-generated text'] },
+  'Google Calendar API': { providerType: 'calendar-oauth-api', tags: ['calendar events', 'OAuth', 'reminders', 'attendees', 'Google Calendar'], useCases: ['list/create/update calendar events', 'build scheduling assistants'], caveats: ['Requires Google OAuth consent for user calendars.'] },
+  'OSV': { providerType: 'open-source-vulnerability-api', tags: ['vulnerability data', 'CVE', 'advisories', 'packages', 'ecosystems', 'security lookup'], useCases: ['check package versions for known vulnerabilities', 'build dependency security scanners'], bestFor: 'No-auth open source package vulnerability lookup.' },
+  'NVD': { providerType: 'cve-vulnerability-api', tags: ['CVE', 'CVSS', 'CPE', 'vulnerability data', 'security advisories'], useCases: ['search CVEs by keyword/CPE', 'enrich security dashboards with CVSS data'] },
+  'GitHub REST API': { providerType: 'source-control-api', tags: ['repositories', 'stars', 'issues', 'commits', 'pull requests', 'releases'], useCases: ['query repo metadata and issues', 'automate GitHub workflows'], caveats: ['No-auth calls are heavily rate-limited; use tokens for agents.'] },
+  'npm Registry API': { providerType: 'package-registry-api', tags: ['npm packages', 'versions', 'downloads', 'dist-tags', 'package metadata'], useCases: ['inspect package versions and metadata', 'build dependency search tools'] },
+  'Docker Hub': { providerType: 'container-registry-api', tags: ['Docker images', 'image tags', 'registry metadata', 'namespaces', 'vulnerabilities'], useCases: ['list container image tags', 'inspect Docker repository metadata'] },
+  'Mail.tm': { providerType: 'temporary-email-api', tags: ['temporary email', 'disposable inbox', 'receive messages', 'test email'], useCases: ['create disposable inboxes for tests', 'receive email in automated QA flows'] },
+  'Twilio Verify': { providerType: 'phone-verification-api', tags: ['SMS OTP', 'phone verification', 'one-time passcodes', 'verification checks'], useCases: ['send OTP codes', 'verify phone ownership'] },
+  'numverify': { providerType: 'phone-validation-api', tags: ['phone validation', 'carrier lookup', 'line type', 'country lookup'], useCases: ['validate phone number format and carrier metadata'] },
+  'Plaid': { providerType: 'banking-data-platform', tags: ['bank account linking', 'transactions', 'balances', 'identity', 'income', 'assets'], useCases: ['link bank accounts', 'fetch transactions and balances with user consent'] },
+  'IBAN.com': { providerType: 'bank-identifier-validation', tags: ['IBAN validation', 'SWIFT', 'BIC', 'bank routing', 'payments validation'], useCases: ['validate IBAN/SWIFT details before payment setup'] },
+  'TaxJar': { providerType: 'sales-tax-api', tags: ['sales tax', 'tax rates', 'tax calculation', 'nexus', 'address tax lookup'], useCases: ['calculate sales tax by address', 'support ecommerce tax workflows'] },
+  'Avalara': { providerType: 'tax-compliance-api', tags: ['sales tax', 'tax calculation', 'address validation', 'exemption certificates', 'compliance'], useCases: ['calculate tax and manage compliance workflows'] },
+  'Smarty': { providerType: 'address-validation-api', tags: ['address validation', 'USPS', 'autocomplete', 'ZIP+4', 'deliverability', 'geocoding'], useCases: ['normalize US addresses', 'add address autocomplete/typeahead'] },
+  'Brandfetch': { providerType: 'brand-enrichment-api', tags: ['brand logo', 'domain logo', 'brand colors', 'company metadata', 'fonts'], useCases: ['fetch brand assets from a domain', 'enrich company profile cards'] },
+  'Clearbit Logo API': { providerType: 'domain-logo-api', tags: ['logo from domain', 'company logo', 'brand logo', 'favicon-like image'], useCases: ['show a company logo from its domain without auth'] },
+  'Microlink': { providerType: 'web-metadata-and-screenshot', tags: ['website metadata', 'link preview', 'Open Graph', 'screenshots', 'PDF capture', 'favicon'], useCases: ['generate link previews', 'capture website screenshots/PDFs without auth'], bestFor: 'No-auth web metadata, unfurling, and lightweight screenshot capture.' },
+  'Urlbox': { providerType: 'website-screenshot-api', tags: ['screenshots', 'responsive previews', 'full-page capture', 'PDF rendering', 'web previews'], useCases: ['capture website screenshots', 'generate responsive preview images'] },
+  'OCR.space': { providerType: 'ocr-api', tags: ['OCR', 'text extraction', 'receipts', 'screenshots', 'PDF OCR', 'scanned documents'], useCases: ['extract text from images/PDFs', 'prototype receipt or screenshot OCR'] },
+  'AssemblyAI': { providerType: 'speech-to-text-api', tags: ['speech to text', 'audio transcription', 'speaker labels', 'summarization', 'audio intelligence'], useCases: ['transcribe audio', 'add speaker labels and summaries'] },
+  'Deepgram': { providerType: 'speech-audio-api', tags: ['speech to text', 'transcription', 'diarization', 'language detection', 'TTS'], useCases: ['transcribe realtime or batch audio', 'build voice apps with STT/TTS'] },
+  'ElevenLabs': { providerType: 'text-to-speech-api', tags: ['text to speech', 'voice generation', 'speech synthesis', 'voice cloning'], useCases: ['generate spoken audio from text', 'prototype voice agents'] },
+  'Stability AI': { providerType: 'image-generation-api', tags: ['image generation', 'Stable Diffusion', 'image editing', 'upscaling', 'generative media'], useCases: ['generate images from prompts', 'edit or upscale images'] },
+  'Sightengine': { providerType: 'image-moderation-api', tags: ['image moderation', 'nudity detection', 'violence detection', 'weapons', 'safe search'], useCases: ['moderate uploaded images', 'detect unsafe visual content'] },
+  'OpenSanctions': { providerType: 'sanctions-screening-api', tags: ['sanctions', 'OFAC', 'PEP screening', 'AML', 'KYC', 'compliance'], useCases: ['screen people/companies for sanctions and PEP risk'] },
+  'Chainalysis': { providerType: 'crypto-compliance-api', tags: ['wallet risk', 'crypto sanctions', 'transaction monitoring', 'KYT', 'compliance'], useCases: ['screen blockchain wallets/transactions for compliance risk'] },
+  'Zippopotam.us': { providerType: 'postal-code-geocoding', tags: ['ZIP code', 'postal code', 'city lookup', 'state lookup', 'geocoding'], useCases: ['resolve postal codes to city/state/country without auth'] },
+  'Mortgage News Daily': { providerType: 'mortgage-rate-data', tags: ['mortgage rates', 'loan rates', 'daily rates', 'home loan benchmarks'], useCases: ['show current mortgage-rate benchmarks'], caveats: ['This is a rates/data page; verify whether a supported API/export is available before integration.'] },
+  'Aviationstack': { providerType: 'aviation-data-api', tags: ['flight status', 'airports', 'airlines', 'arrivals', 'departures', 'routes'], useCases: ['track flight status', 'show airport arrivals/departures'] },
+  'Amadeus Travel APIs': { providerType: 'travel-commerce-platform', tags: ['flight search', 'airport data', 'hotel search', 'hotel booking', 'availability', 'pricing'], useCases: ['search flights and hotels', 'build travel booking/availability workflows'] },
+};
+
+const INTENT_TAG_RULES = [
+  [/webhook/i, 'webhooks'], [/OCR/i, 'OCR'], [/screenshot/i, 'screenshots'], [/PDF/i, 'PDF'], [/barcode|UPC|EAN/i, 'barcode lookup'], [/geocod/i, 'geocoding'], [/routing|route/i, 'routing'], [/forecast|weather/i, 'weather forecast'], [/jobs?|hiring/i, 'jobs'], [/payment|checkout|billing/i, 'payments'], [/OAuth|OpenID|login|authentication/i, 'auth'], [/SMS|MMS|WhatsApp/i, 'SMS'], [/email/i, 'email'], [/vulnerab|CVE|CVSS/i, 'vulnerability data'], [/government|census|federal/i, 'government data'], [/stock|forex|market data/i, 'market data'], [/wallet|blockchain|token/i, 'wallet/token data'], [/recipe|nutrition|ingredient/i, 'nutrition'], [/flight|hotel|travel/i, 'travel'], [/image|photo|avatar/i, 'images'], [/speech|voice|transcription|audio/i, 'audio'], [/sanctions|KYC|AML|OFAC/i, 'compliance'], [/IP |VPN|proxy|TOR/i, 'IP intelligence'],
+];
+
+function uniqueStrings(values) {
+  return [...new Set(values.filter(Boolean).map(value => String(value).trim()).filter(Boolean))];
+}
+
+function normalizeAuthType(auth) {
+  const value = String(auth || '').toLowerCase();
+  if (value === 'no' || value === 'none' || value === 'noauth') return 'none';
+  if (value.includes('oauth')) return 'OAuth';
+  if (value.includes('key')) return 'apiKey';
+  if (value.includes('jwt')) return 'JWT';
+  return value && value !== 'unknown' ? value : 'unknown';
+}
+
+function enrichCuratedApi(api) {
+  const categoryBase = CURATED_CATEGORY_ENRICHMENTS[api.category] || {};
+  const specific = CURATED_API_ENRICHMENTS[api.name] || {};
+  const text = `${api.name || ''} ${api.description || ''} ${(specific.tags || []).join(' ')}`;
+  const inferredTags = INTENT_TAG_RULES.filter(([pattern]) => pattern.test(text)).map(([, tag]) => tag);
+  const merged = { ...categoryBase, ...specific, ...api };
+  merged.authType = api.authType || specific.authType || categoryBase.authType || normalizeAuthType(api.auth);
+  merged.providerType = api.providerType || specific.providerType || categoryBase.providerType || 'public-api';
+  merged.tags = uniqueStrings([...(categoryBase.tags || []), ...(specific.tags || []), ...inferredTags, ...(api.tags || [])]);
+  merged.domains = uniqueStrings([...(categoryBase.domains || []), ...(specific.domains || []), ...(api.domains || [])]);
+  merged.useCases = uniqueStrings([...(categoryBase.useCases || []), ...(specific.useCases || []), ...(api.useCases || [])]);
+  merged.caveats = uniqueStrings([...(categoryBase.caveats || []), ...(specific.caveats || []), ...(api.caveats || [])]);
+  merged.bestFor = api.bestFor || specific.bestFor || categoryBase.bestFor;
+  return merged;
+}
+
+const ENRICHED_CURATED_APIS = CURATED_APIS.map(enrichCuratedApi);
+
 function compactName(value) { return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
-const KNOWN_BEST_NAMES = new Map(CURATED_APIS.map(api => [compactName(api.name), 15]));
+const KNOWN_BEST_NAMES = new Map(ENRICHED_CURATED_APIS.map(api => [compactName(api.name), 15]));
 
 function knownBestBoost(entryName) {
   const compactEntryName = compactName(entryName);
@@ -419,7 +618,7 @@ function domainAdjustment(entry, queryTokens) {
   const domains = detectDomains(queryTokens);
   if (!domains.length) return 0;
   const cat = String(entry.category || '').toLowerCase();
-  const text = `${entry.name || ''} ${entry.description || ''} ${entry.provider || ''}`.toLowerCase();
+  const text = `${entry.name || ''} ${entry.description || ''} ${entry.provider || ''} ${enrichedText(entry)}`.toLowerCase();
   let adjustment = 0;
   for (const domain of domains) {
     const profile = DOMAIN_PROFILES[domain];
@@ -512,14 +711,54 @@ function intersectionCount(a, b) {
   return n;
 }
 
+function arrayify(value) {
+  if (value == null) return [];
+  return Array.isArray(value) ? value.filter(Boolean) : [value];
+}
+
+function uniqueArray(...values) {
+  const seen = new Set();
+  const out = [];
+  for (const value of values.flatMap(arrayify)) {
+    const s = String(value).trim();
+    if (!s) continue;
+    const key = s.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(s);
+  }
+  return out;
+}
+
+function enrichedText(entry) {
+  return [
+    entry.provider,
+    entry.providerType,
+    entry.authType,
+    entry.pricing,
+    entry.freeTier,
+    entry.bestFor,
+    entry.avoidFor,
+    entry.rateLimit,
+    entry.apiBase,
+    ...arrayify(entry.tags),
+    ...arrayify(entry.useCases),
+    ...arrayify(entry.domains),
+    ...arrayify(entry.exampleQueries),
+    ...arrayify(entry.caveats),
+  ].filter(Boolean).join(' ');
+}
+
 function textScore(entry, queryTokens) {
   const name = tokenSet(entry.name);
   const category = tokenSet(entry.category);
   const desc = tokenSet(entry.description);
-  const all = new Set([...name, ...category, ...desc, ...tokenSet(entry.provider || '')]);
+  const enriched = tokenSet(enrichedText(entry));
+  const all = new Set([...name, ...category, ...desc, ...enriched]);
   return 5 * intersectionCount(queryTokens, name)
     + 4 * intersectionCount(queryTokens, category)
     + 2 * intersectionCount(queryTokens, desc)
+    + 3 * intersectionCount(queryTokens, enriched)
     + intersectionCount(queryTokens, all);
 }
 
@@ -533,7 +772,7 @@ function asciiRatio(value) {
 
 
 function targetedBoost(entry, queryText) {
-  const haystack = `${entry.name || ''} ${entry.category || ''} ${entry.description || ''} ${entry.url || ''}`;
+  const haystack = `${entry.name || ''} ${entry.category || ''} ${entry.description || ''} ${entry.url || ''} ${enrichedText(entry)}`;
   let boost = 0;
   for (const [queryPattern, entryPattern, amount] of TARGETED_BOOSTS) {
     if (queryPattern.test(queryText) && entryPattern.test(haystack)) boost = Math.max(boost, amount);
@@ -552,6 +791,23 @@ function genericCloudPenalty(entry, queryText) {
   return 0;
 }
 
+function intentPenalty(entry, queryText) {
+  const cat = String(entry.category || '').toLowerCase();
+  const text = `${entry.name || ''} ${entry.description || ''} ${enrichedText(entry)}`.toLowerCase();
+  let penalty = 0;
+
+  if (cat.includes('cryptocurrency')) {
+    if (/\b(fiat only|not crypto|non crypto|stocks? quote|equity|equities|plaid|bank account|banking transactions|routing number|iban|mortgage|loan calculator)\b/.test(queryText)) penalty += 60;
+    if (/\b(favicon|website preview|open graph|link preview|screenshot)\b/.test(queryText) && !/\b(microlink|urlbox|favicon|website metadata|open graph|link preview|screenshot)\b/.test(text)) penalty += 120;
+  }
+
+  if (!cat.includes('cryptocurrency') && /\b(wallet address|identicon|avatar|profile picture)\b/.test(queryText) && /\b(avatar|identicon|profile picture)\b/.test(text)) {
+    penalty -= 20;
+  }
+
+  return penalty;
+}
+
 function score(entry, queryTokens, queryText = '') {
   let base = textScore(entry, queryTokens);
   if (entry.openapiUrl) base += 2;
@@ -561,7 +817,7 @@ function score(entry, queryTokens, queryText = '') {
   if (asciiRatio(entry.name) < 0.7) base -= 60;
   else if (asciiRatio(`${entry.name || ''} ${entry.description || ''}`) < 0.65) base -= 18;
   base += knownBestBoost(entry.name);
-  return base + domainAdjustment(entry, queryTokens) + targetedBoost(entry, queryText) - genericCloudPenalty(entry, queryText);
+  return base + domainAdjustment(entry, queryTokens) + targetedBoost(entry, queryText) - genericCloudPenalty(entry, queryText) - intentPenalty(entry, queryText);
 }
 
 async function cacheIsFresh() {
@@ -681,8 +937,8 @@ async function buildData() {
     sourceStatus['apis-guru'] = rows.length;
     entries.push(...rows);
   } else sourceStatus['apis-guru'] = `error: ${guru.reason.message}`;
-  sourceStatus.curated = CURATED_APIS.length;
-  entries.push(...CURATED_APIS);
+  sourceStatus.curated = ENRICHED_CURATED_APIS.length;
+  entries.push(...ENRICHED_CURATED_APIS);
   return { dataVersion: DATA_VERSION, generatedAt: new Date().toISOString(), sourceStatus, entries: dedupe(entries) };
 }
 
@@ -695,7 +951,7 @@ function keyFor(entry) {
 
 function mergeEntry(a, b) {
   const sources = new Set([...(a.sources || [a.source]), ...(b.sources || [b.source])].filter(Boolean));
-  return {
+  const merged = {
     ...a,
     description: (b.description || '').length > (a.description || '').length ? b.description : a.description,
     auth: a.auth !== 'Unknown' ? a.auth : b.auth,
@@ -707,6 +963,13 @@ function mergeEntry(a, b) {
     sourceWeight: (a.sourceWeight || 0) + (b.sourceWeight || 0),
     sources: [...sources],
   };
+  for (const field of ENRICHMENT_FIELDS) {
+    const av = a[field];
+    const bv = b[field];
+    if (Array.isArray(av) || Array.isArray(bv)) merged[field] = uniqueArray(av, bv);
+    else merged[field] = b.source === 'curated' && bv ? bv : (av || bv);
+  }
+  return merged;
 }
 
 function dedupe(entries) {
@@ -726,6 +989,10 @@ function dedupe(entries) {
       provider: e.provider,
       openapiUrl: e.openapiUrl || null,
     };
+    for (const field of ENRICHMENT_FIELDS) {
+      if (e[field] == null) continue;
+      clean[field] = Array.isArray(e[field]) ? uniqueArray(e[field]) : e[field];
+    }
     const key = keyFor(clean);
     map.set(key, map.has(key) ? mergeEntry(map.get(key), clean) : clean);
   }
@@ -840,6 +1107,10 @@ function printMarkdown(rows) {
     console.log(`${i + 1}. **${e.name}** (${e.category}) — ${cleanDescription(e.description)}`);
     console.log(`   - URL: ${e.url}`);
     console.log(`   - Auth: \`${e.auth}\` · HTTPS: ${e.https ? 'yes' : 'no'} · CORS: ${e.cors} · sources: ${((e.sources && e.sources.length) ? e.sources : [e.source || 'unknown']).join(', ')} · score: ${e.score}`);
+    if (e.tags?.length) console.log(`   - Tags: ${e.tags.slice(0, 8).join(', ')}`);
+    if (e.useCases?.length) console.log(`   - Good for: ${e.useCases.slice(0, 3).join('; ')}`);
+    if (e.freeTier || e.pricing) console.log(`   - Pricing/free tier: ${e.freeTier || e.pricing}`);
+    if (e.caveats?.length) console.log(`   - Caveat: ${e.caveats[0]}`);
     if (e.openapiUrl) console.log(`   - OpenAPI: ${e.openapiUrl}`);
     if (e.check) {
       const status = e.check.ok ? 'reachable' : 'not reachable';

@@ -8,7 +8,7 @@ async function fixtureApp() {
   const dir = await mkdtemp(join(tmpdir(), 'paf-app-'));
   const cachePath = join(dir, 'cache.json');
   await writeFile(cachePath, JSON.stringify({
-    dataVersion: 10,
+    dataVersion: 12,
     entries: [
       { name: 'Open-Meteo', url: 'https://open-meteo.com/en/docs', description: 'Free weather forecast API', auth: 'No', https: true, cors: 'Yes', category: 'Weather', source: 'curated', sourceWeight: 5, sources: ['curated'] },
       { name: 'Auth0', url: 'https://auth0.com/docs/api', description: 'OAuth OpenID Connect login authentication API', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Authentication', source: 'curated', sourceWeight: 5, sources: ['curated'] },

@@ -18,7 +18,7 @@ function fixtureCache(entries = BASE_ENTRIES) {
   const dir = join(tmpdir(), `public-api-finder-test-${process.pid}-${Date.now()}`);
   mkdirSync(dir, { recursive: true });
   const path = join(dir, 'all.json');
-  writeFileSync(path, JSON.stringify({ dataVersion: 10, count: entries.length, entries }));
+  writeFileSync(path, JSON.stringify({ dataVersion: 12, count: entries.length, entries }));
   return path;
 }
 
@@ -103,6 +103,18 @@ test('crypto intent favors cryptocurrency APIs over generic price APIs', () => {
   const rows = JSON.parse(r.stdout);
   assert.ok(rows.some(row => row.category === 'Cryptocurrency'));
   assert.equal(rows[0].category, 'Cryptocurrency');
+});
+
+test('enriched metadata is searchable and returned in json', () => {
+  const r = run(['wallet portfolio api', '--json'], [
+    { name: 'Generic Wallet', url: 'https://example.com/wallet', description: 'Digital wallet app API', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Payments' },
+    { name: 'Moralis', url: 'https://docs.moralis.com/web3-data-api', description: 'Web3 data API', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Cryptocurrency', tags: ['wallet balances'], useCases: ['build wallet portfolio views'], pricing: 'free tier plus paid plans', providerType: 'web3-data-platform' }
+  ]);
+  assert.equal(r.status, 0, r.stderr);
+  const rows = JSON.parse(r.stdout);
+  assert.equal(rows[0].name, 'Moralis');
+  assert.deepEqual(rows[0].useCases, ['build wallet portfolio views']);
+  assert.equal(rows[0].providerType, 'web3-data-platform');
 });
 
 test('check annotates result reachability failures', () => {
