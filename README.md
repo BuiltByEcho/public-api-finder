@@ -11,11 +11,11 @@ Powered by multiple sources plus a curated best-known API layer:
 ## Quick start
 
 ```bash
-npx --yes --package=public-api-finder -- public-api-finder "weather forecast" --no-auth --https
-npx --yes --package=public-api-finder -- public-api-finder "crypto prices" --category Cryptocurrency --limit 5
-npx --yes --package=public-api-finder -- public-api-finder "jobs" --json
-npx --yes --package=public-api-finder -- public-api-finder "payments" --openapi
-npx --yes --package=public-api-finder -- public-api-finder "weather forecast" --no-auth --https --check
+npx --yes --package=@builtbyecho/public-api-finder -- public-api-finder "weather forecast" --no-auth --https
+npx --yes --package=@builtbyecho/public-api-finder -- public-api-finder "crypto prices" --category Cryptocurrency --limit 5
+npx --yes --package=@builtbyecho/public-api-finder -- public-api-finder "jobs" --json
+npx --yes --package=@builtbyecho/public-api-finder -- public-api-finder "payments" --openapi
+npx --yes --package=@builtbyecho/public-api-finder -- public-api-finder "weather forecast" --no-auth --https --check
 ```
 
 ## Why
