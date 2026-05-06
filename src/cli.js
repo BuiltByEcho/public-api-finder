@@ -12,7 +12,7 @@ const SOURCES = {
 };
 const CACHE_PATH = process.env.PUBLIC_API_FINDER_CACHE || join(homedir(), '.cache', 'public-api-finder', 'all.json');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const DATA_VERSION = 13;
+const DATA_VERSION = 14;
 
 const ENRICHMENT_FIELDS = [
   'tags',
@@ -574,23 +574,51 @@ function normalizeAuthType(auth) {
   return value && value !== 'unknown' ? value : 'unknown';
 }
 
-function enrichCuratedApi(api) {
+function wordsFrom(value) {
+  return String(value || '')
+    .replace(/&/g, ' and ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .match(/[a-z0-9]+/g) || [];
+}
+
+function categoryTags(category) {
+  const words = wordsFrom(category).filter(word => !['and', 'api', 'apis', 'openapi', 'unknown'].includes(word));
+  const tags = [];
+  const categoryText = String(category || '').toLowerCase();
+  if (categoryText && !['unknown', 'openapi'].includes(categoryText)) tags.push(categoryText.replace(/\s+/g, ' '));
+  for (const word of words) tags.push(word);
+  return tags;
+}
+
+function inferTags(api, specific = {}) {
+  const text = `${api.name || ''} ${api.category || ''} ${api.description || ''} ${api.url || ''} ${api.provider || ''} ${(specific.tags || []).join(' ')}`;
+  return INTENT_TAG_RULES.filter(([pattern]) => pattern.test(text)).map(([, tag]) => tag);
+}
+
+function enrichApiMetadata(api) {
   const categoryBase = CURATED_CATEGORY_ENRICHMENTS[api.category] || {};
   const specific = CURATED_API_ENRICHMENTS[api.name] || {};
-  const text = `${api.name || ''} ${api.description || ''} ${(specific.tags || []).join(' ')}`;
-  const inferredTags = INTENT_TAG_RULES.filter(([pattern]) => pattern.test(text)).map(([, tag]) => tag);
   const merged = { ...categoryBase, ...specific, ...api };
+  const tags = uniqueStrings([
+    ...(categoryBase.tags || []),
+    ...(specific.tags || []),
+    ...inferTags(api, specific),
+    ...(api.tags || []),
+    ...categoryTags(api.category),
+  ]);
+
   merged.authType = api.authType || specific.authType || categoryBase.authType || normalizeAuthType(api.auth);
   merged.providerType = api.providerType || specific.providerType || categoryBase.providerType || 'public-api';
-  merged.tags = uniqueStrings([...(categoryBase.tags || []), ...(specific.tags || []), ...inferredTags, ...(api.tags || [])]);
-  merged.domains = uniqueStrings([...(categoryBase.domains || []), ...(specific.domains || []), ...(api.domains || [])]);
+  merged.tags = tags.length ? tags : ['public api'];
+  merged.domains = uniqueStrings([...(categoryBase.domains || []), ...(specific.domains || []), ...(api.domains || []), ...categoryTags(api.category).slice(0, 2)]);
   merged.useCases = uniqueStrings([...(categoryBase.useCases || []), ...(specific.useCases || []), ...(api.useCases || [])]);
   merged.caveats = uniqueStrings([...(categoryBase.caveats || []), ...(specific.caveats || []), ...(api.caveats || [])]);
   merged.bestFor = api.bestFor || specific.bestFor || categoryBase.bestFor;
   return merged;
 }
 
-const ENRICHED_CURATED_APIS = CURATED_APIS.map(enrichCuratedApi);
+const ENRICHED_CURATED_APIS = CURATED_APIS.map(enrichApiMetadata);
 
 export function getCuratedApis() {
   return ENRICHED_CURATED_APIS.map(api => ({ ...api, tags: [...(api.tags || [])], domains: [...(api.domains || [])], useCases: [...(api.useCases || [])] }));
@@ -705,8 +733,10 @@ function applyQueryHints(args) {
   if (!args.cors && /\b(cors|frontend-safe|browser-safe|frontend safe|browser safe)\b/.test(query)) args.cors = 'Yes';
 }
 
+const SEARCH_STOPWORDS = new Set(['a', 'an', 'and', 'api', 'apis', 'for', 'from', 'in', 'no', 'of', 'on', 'or', 'the', 'to', 'with']);
+
 function tokenSet(text) {
-  return new Set(String(text).toLowerCase().match(/[a-z0-9]+/g)?.filter(t => t.length > 1) || []);
+  return new Set(String(text).toLowerCase().match(/[a-z0-9]+/g)?.filter(t => t.length > 1 && !SEARCH_STOPWORDS.has(t)) || []);
 }
 
 function intersectionCount(a, b) {
@@ -943,7 +973,8 @@ async function buildData() {
   } else sourceStatus['apis-guru'] = `error: ${guru.reason.message}`;
   sourceStatus.curated = ENRICHED_CURATED_APIS.length;
   entries.push(...ENRICHED_CURATED_APIS);
-  return { dataVersion: DATA_VERSION, generatedAt: new Date().toISOString(), sourceStatus, entries: dedupe(entries) };
+  const deduped = dedupe(entries).map(enrichApiMetadata);
+  return { dataVersion: DATA_VERSION, generatedAt: new Date().toISOString(), sourceStatus, entries: deduped };
 }
 
 function keyFor(entry) {
@@ -1006,7 +1037,7 @@ function dedupe(entries) {
 async function loadData(refresh = false) {
   if (!refresh && await cacheIsFresh()) {
     const cached = JSON.parse(await readFile(CACHE_PATH, 'utf8'));
-    if (cached.dataVersion === DATA_VERSION) return cached.entries || [];
+    if (cached.dataVersion === DATA_VERSION) return (cached.entries || []).map(enrichApiMetadata);
   }
   const data = await buildData();
   await mkdir(dirname(CACHE_PATH), { recursive: true });
@@ -1082,6 +1113,10 @@ async function checkRows(rows) {
     checked.push({ ...row, check: await checkUrl(row.url) });
   }
   return checked;
+}
+
+export async function buildSearchIndex(options = {}) {
+  return loadData(Boolean(options.refresh));
 }
 
 export async function searchApis(options = {}) {

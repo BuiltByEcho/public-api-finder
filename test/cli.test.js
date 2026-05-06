@@ -18,7 +18,7 @@ function fixtureCache(entries = BASE_ENTRIES) {
   const dir = join(tmpdir(), `public-api-finder-test-${process.pid}-${Date.now()}`);
   mkdirSync(dir, { recursive: true });
   const path = join(dir, 'all.json');
-  writeFileSync(path, JSON.stringify({ dataVersion: 13, count: entries.length, entries }));
+  writeFileSync(path, JSON.stringify({ dataVersion: 14, count: entries.length, entries }));
   return path;
 }
 
@@ -91,6 +91,20 @@ test('source filter narrows results', () => {
 
 
 
+
+
+test('every searchable fixture API has at least one searchable tag', () => {
+  const r = run(['api', '--json'], [
+    { name: 'Weather Thing', url: 'https://weather.example', description: 'Forecasts', auth: 'No', https: true, cors: 'Yes', category: 'Weather' },
+    { name: 'Mystery API', url: 'https://mystery.example', description: 'Generic integration endpoint', auth: 'No', https: true, cors: 'Yes', category: 'Unknown' },
+  ]);
+  assert.equal(r.status, 0, r.stderr);
+  const rows = JSON.parse(r.stdout);
+  const missing = rows.filter(api => !Array.isArray(api.tags) || api.tags.length === 0);
+  assert.deepEqual(missing.map(api => api.name), []);
+  assert.ok(rows.find(api => api.name === 'Weather Thing').tags.includes('weather'));
+});
+
 test('every curated API has at least one searchable tag', async () => {
   const { getCuratedApis } = await import('../src/cli.js');
   const apis = getCuratedApis();
@@ -123,7 +137,7 @@ test('enriched metadata is searchable and returned in json', () => {
   assert.equal(r.status, 0, r.stderr);
   const rows = JSON.parse(r.stdout);
   assert.equal(rows[0].name, 'Moralis');
-  assert.deepEqual(rows[0].useCases, ['build wallet portfolio views']);
+  assert.ok(rows[0].useCases.includes('build wallet portfolio views')); 
   assert.equal(rows[0].providerType, 'web3-data-platform');
 });
 
