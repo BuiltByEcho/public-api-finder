@@ -18,7 +18,7 @@ function fixtureCache(entries = BASE_ENTRIES) {
   const dir = join(tmpdir(), `public-api-finder-test-${process.pid}-${Date.now()}`);
   mkdirSync(dir, { recursive: true });
   const path = join(dir, 'all.json');
-  writeFileSync(path, JSON.stringify({ dataVersion: 2, count: entries.length, entries }));
+  writeFileSync(path, JSON.stringify({ dataVersion: 3, count: entries.length, entries }));
   return path;
 }
 
@@ -103,6 +103,18 @@ test('check annotates result reachability failures', () => {
   assert.equal(rows[0].check.status, null);
   assert.equal(rows[0].check.method, 'GET');
   assert.ok(rows[0].check.error);
+});
+
+test('natural-language no-auth and cors hints act like filters', () => {
+  const r = run(['weather no auth cors', '--json'], [
+    { name: 'Key Weather', url: 'https://example.com/key', description: 'Weather API', auth: 'apiKey', https: true, cors: 'Yes', category: 'Weather' },
+    { name: 'Server Weather', url: 'https://example.com/server', description: 'Weather API', auth: 'No', https: true, cors: 'Unknown', category: 'Weather' },
+    { name: 'Browser Weather', url: 'https://example.com/browser', description: 'Weather API', auth: 'No', https: true, cors: 'Yes', category: 'Weather' }
+  ]);
+  assert.equal(r.status, 0, r.stderr);
+  const rows = JSON.parse(r.stdout);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].name, 'Browser Weather');
 });
 
 test('short generic api names do not receive broad curated-name boosts', () => {

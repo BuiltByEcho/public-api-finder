@@ -10,7 +10,7 @@ const SOURCES = {
 };
 const CACHE_PATH = process.env.PUBLIC_API_FINDER_CACHE || join(homedir(), '.cache', 'public-api-finder', 'all.json');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const DATA_VERSION = 2;
+const DATA_VERSION = 3;
 
 const DOMAIN_PROFILES = {
   crypto: {
@@ -62,9 +62,9 @@ const DOMAIN_PROFILES = {
     weakTerms: ['media', 'search'],
   },
   government: {
-    triggers: ['government', 'census', 'legislation', 'representatives', 'elections', 'bills', 'federal', 'agencies', 'public', 'civic'],
-    categoryWeights: { government: 18, 'open data': 10 },
-    boostTerms: ['government', 'census', 'legislation', 'representatives', 'elections', 'bills', 'federal', 'agencies', 'public data', 'civic'],
+    triggers: ['government', 'census', 'legislation', 'representatives', 'elections', 'election', 'campaign', 'donations', 'candidates', 'bills', 'federal', 'agencies', 'public', 'civic'],
+    categoryWeights: { government: 18, 'open data': 12, finance: -12, financial: -12, cryptocurrency: -12 },
+    boostTerms: ['government', 'census', 'legislation', 'representatives', 'elections', 'election', 'campaign finance', 'campaign', 'donations', 'candidates', 'bills', 'federal', 'agencies', 'public data', 'civic'],
     weakTerms: ['public', 'data'],
   },
   commerce: {
@@ -87,13 +87,13 @@ const DOMAIN_PROFILES = {
   },
   ip: {
     triggers: ['ip', 'geolocation', 'geoip', 'asn', 'whois'],
-    categoryWeights: { geocoding: 12, location: 12, security: 8 },
-    boostTerms: ['ip', 'geolocation', 'geoip', 'asn', 'whois', 'country', 'city'],
+    categoryWeights: { geocoding: 12, location: 14, security: 14, openapi: -8, cloud: -24 },
+    boostTerms: ['ip', 'geolocation', 'geoip', 'asn', 'whois', 'country', 'city', 'vpn', 'proxy', 'privacy', 'reputation', 'threat'],
     weakTerms: ['geolocation'],
   },
   dictionary: {
     triggers: ['dictionary', 'definitions', 'definition', 'word', 'words', 'thesaurus', 'phonetics'],
-    categoryWeights: { dictionaries: 24, dictionary: 24, education: 8, development: -12 },
+    categoryWeights: { dictionaries: 24, dictionary: 24, education: 8, development: -12, openapi: -8, cloud: -24 },
     boostTerms: ['dictionary', 'definition', 'definitions', 'word', 'words', 'thesaurus', 'phonetics', 'pronunciation'],
     weakTerms: ['api'],
   },
@@ -111,7 +111,7 @@ const DOMAIN_PROFILES = {
   },
   currency: {
     triggers: ['currency', 'currencies', 'exchange', 'forex', 'fx', 'rates', 'conversion'],
-    categoryWeights: { 'currency exchange': 24, finance: 8, financial: 8, cryptocurrency: -10 },
+    categoryWeights: { 'currency exchange': 24, finance: 3, financial: 3, cryptocurrency: -10 },
     boostTerms: ['currency', 'currencies', 'exchange rates', 'forex', 'fx', 'conversion'],
     weakTerms: ['rates', 'exchange'],
   },
@@ -183,6 +183,8 @@ const CURATED_APIS = [
   { name: 'PayPal', url: 'https://developer.paypal.com/api/rest/', description: 'Payments, checkout orders, invoices, subscriptions, payouts, and disputes API.', auth: 'OAuth', https: true, cors: 'Unknown', category: 'Payments', source: 'curated', sourceWeight: 5 },
   { name: 'Abstract Email Validation', url: 'https://www.abstractapi.com/email-verification-validation-api', description: 'Email validation, deliverability, typo detection, MX records, and disposable email checks.', auth: 'apiKey', https: true, cors: 'Yes', category: 'Email', source: 'curated', sourceWeight: 5 },
   { name: 'IPinfo', url: 'https://ipinfo.io/developers', description: 'IP geolocation, ASN, company, carrier, privacy, and hosted domains data.', auth: 'No', https: true, cors: 'Unknown', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
+  { name: 'IPQualityScore', url: 'https://www.ipqualityscore.com/documentation/proxy-detection-api/overview', description: 'IP reputation, VPN, proxy, TOR, bot, fraud score, privacy, and threat detection API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Security', source: 'curated', sourceWeight: 5 },
+  { name: 'proxycheck.io', url: 'https://proxycheck.io/api/', description: 'IP proxy, VPN, TOR, datacenter, ASN, risk, and privacy detection API.', auth: 'No', https: true, cors: 'Unknown', category: 'Security', source: 'curated', sourceWeight: 5 },
   { name: 'Free Dictionary API', url: 'https://dictionaryapi.dev/', description: 'Free dictionary definitions, phonetics, pronunciations, parts of speech, meanings, and examples.', auth: 'No', https: true, cors: 'Yes', category: 'Dictionaries', source: 'curated', sourceWeight: 5 },
   { name: 'spoonacular', url: 'https://spoonacular.com/food-api/docs', description: 'Recipes, ingredients, meal planning, nutrition, grocery products, and food ontology API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Food & Drink', source: 'curated', sourceWeight: 5 },
   { name: 'OpenAQ', url: 'https://docs.openaq.org/', description: 'Open air quality measurements, locations, sensors, pollutants, and environmental monitoring data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Environment', source: 'curated', sourceWeight: 5 },
@@ -194,6 +196,7 @@ const CURATED_APIS = [
   { name: 'JSONPlaceholder', url: 'https://jsonplaceholder.typicode.com/', description: 'Fake REST API for posts, comments, albums, photos, todos, and users in demos and tests.', auth: 'No', https: true, cors: 'Yes', category: 'Test Data', source: 'curated', sourceWeight: 5 },
   { name: 'Transitland', url: 'https://www.transit.land/documentation/datastore/api-endpoints.html', description: 'Transit operators, routes, stops, schedules, GTFS feeds, and public transportation data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Transportation', source: 'curated', sourceWeight: 5 },
   { name: 'Transport API', url: 'https://www.transportapi.com/developers/documentation/', description: 'UK transport, train, bus, routes, stops, departures, and journey planning API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Transportation', source: 'curated', sourceWeight: 5 },
+  { name: 'OpenFEC', url: 'https://api.open.fec.gov/developers/', description: 'US election campaign finance data including candidates, committees, donations, filings, and spending.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Open Data', source: 'curated', sourceWeight: 5 },
 ];
 
 function compactName(value) { return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
@@ -239,6 +242,9 @@ function domainAdjustment(entry, queryTokens) {
     for (const weak of profile.weakTerms) {
       if (queryTokens.has(weak) && text.includes(weak) && !categoryHit && !textHit) adjustment -= 4;
     }
+  }
+  if (cat.includes('currency exchange') && [...queryTokens].some(t => ['stock', 'stocks', 'equity', 'equities', 'ticker', 'tickers', 'candles', 'ohlc', 'intraday'].includes(t))) {
+    adjustment -= 18;
   }
   return adjustment;
 }
@@ -290,7 +296,14 @@ function parseArgs(argv) {
     else parts.push(a);
   }
   args.query = parts.join(' ').trim();
+  applyQueryHints(args);
   return args;
+}
+
+function applyQueryHints(args) {
+  const query = String(args.query || '').toLowerCase();
+  if (!args.noAuth && /\b(no auth|without auth|no api key|no key|unauthenticated)\b/.test(query)) args.noAuth = true;
+  if (!args.cors && /\b(cors|frontend-safe|browser-safe|frontend safe|browser safe)\b/.test(query)) args.cors = 'Yes';
 }
 
 function tokenSet(text) {
@@ -470,7 +483,7 @@ function mergeEntry(a, b) {
     description: (b.description || '').length > (a.description || '').length ? b.description : a.description,
     auth: a.auth !== 'Unknown' ? a.auth : b.auth,
     https: Boolean(a.https || b.https),
-    cors: a.cors !== 'Unknown' ? a.cors : b.cors,
+    cors: a.cors === 'Yes' || b.cors === 'Yes' ? 'Yes' : (a.cors !== 'Unknown' ? a.cors : b.cors),
     category: a.category !== 'Unknown' ? a.category : b.category,
     openapiUrl: a.openapiUrl || b.openapiUrl || null,
     provider: a.provider || b.provider,
