@@ -1,0 +1,31 @@
+name: Node Package Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package.json
+      - name: Install
+        run: npm install --ignore-scripts
+      - name: Test
+        run: npm test
+      - name: Quality eval
+        run: npm run eval:quality
+      - name: Pack check
+        run: npm pack --dry-run
