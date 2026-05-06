@@ -10,7 +10,7 @@ const SOURCES = {
 };
 const CACHE_PATH = process.env.PUBLIC_API_FINDER_CACHE || join(homedir(), '.cache', 'public-api-finder', 'all.json');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const DATA_VERSION = 3;
+const DATA_VERSION = 4;
 
 const DOMAIN_PROFILES = {
   crypto: {
@@ -24,6 +24,12 @@ const DOMAIN_PROFILES = {
     categoryWeights: { finance: 16, financial: 16, 'currency exchange': 5 },
     boostTerms: ['stock', 'stocks', 'equity', 'market', 'trading', 'ticker', 'quote', 'quotes', 'forex', 'portfolio', 'options', 'historical'],
     weakTerms: ['quote', 'quotes', 'price', 'prices', 'market'],
+  },
+  communication: {
+    triggers: ['sms', 'messaging', 'message', 'messages', 'text', 'texts', 'send', 'twilio', 'whatsapp', 'email', 'notification', 'notifications'],
+    categoryWeights: { communication: 24, messaging: 24, openapi: 4, cloud: -18 },
+    boostTerms: ['sms', 'messaging', 'message', 'messages', 'send text', 'twilio', 'whatsapp', 'notification', 'notifications'],
+    weakTerms: ['send', 'text', 'openapi'],
   },
   weather: {
     triggers: ['weather', 'forecast', 'radar', 'temperature', 'climate', 'alerts', 'precipitation', 'hourly', 'daily'],
@@ -97,6 +103,18 @@ const DOMAIN_PROFILES = {
     boostTerms: ['dictionary', 'definition', 'definitions', 'word', 'words', 'thesaurus', 'phonetics', 'pronunciation'],
     weakTerms: ['api'],
   },
+  books: {
+    triggers: ['book', 'books', 'isbn', 'authors', 'author', 'covers', 'cover', 'library', 'libraries', 'public domain', 'ebooks', 'metadata'],
+    categoryWeights: { books: 24, education: 12, 'open data': 8, government: -10, cloud: -18 },
+    boostTerms: ['book', 'books', 'isbn', 'authors', 'author', 'covers', 'cover', 'open library', 'public domain', 'ebooks', 'metadata'],
+    weakTerms: ['public', 'search'],
+  },
+  podcasts: {
+    triggers: ['podcast', 'podcasts', 'episode', 'episodes', 'rss', 'itunes', 'audio', 'metadata'],
+    categoryWeights: { podcasts: 24, media: 14, entertainment: 10, music: 8, anime: -12, video: -8, cloud: -18 },
+    boostTerms: ['podcast', 'podcasts', 'episode', 'episodes', 'rss', 'itunes', 'audio', 'show metadata'],
+    weakTerms: ['search', 'metadata'],
+  },
   food: {
     triggers: ['recipe', 'recipes', 'nutrition', 'ingredients', 'ingredient', 'calories', 'food', 'meal', 'meals'],
     categoryWeights: { food: 18, 'food & drink': 18, health: 6, social: -8 },
@@ -104,9 +122,9 @@ const DOMAIN_PROFILES = {
     weakTerms: ['data'],
   },
   environment: {
-    triggers: ['air', 'quality', 'pollution', 'aqi', 'environment', 'environmental', 'climate'],
+    triggers: ['air', 'quality', 'pollution', 'aqi', 'environment', 'environmental', 'climate', 'carbon', 'emissions', 'electricity', 'grid', 'intensity'],
     categoryWeights: { environment: 20, science: 10, 'science & math': 10, weather: 5 },
-    boostTerms: ['air quality', 'pollution', 'aqi', 'environment', 'environmental', 'climate', 'particulate'],
+    boostTerms: ['air quality', 'pollution', 'aqi', 'environment', 'environmental', 'climate', 'particulate', 'carbon intensity', 'carbon', 'emissions', 'electricity grid', 'grid intensity'],
     weakTerms: ['quality'],
   },
   currency: {
@@ -147,6 +165,7 @@ const CURATED_APIS = [
   { name: 'Twelve Data', url: 'https://twelvedata.com/docs', description: 'Stock, forex, ETF, index, and crypto market data with real-time and historical prices.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Finance', source: 'curated', sourceWeight: 5 },
   { name: 'Tradier', url: 'https://developer.tradier.com/', description: 'US equity, options, quotes, market data, trading, and brokerage API.', auth: 'OAuth', https: true, cors: 'Yes', category: 'Finance', source: 'curated', sourceWeight: 5 },
   { name: 'Finnhub', url: 'https://finnhub.io/docs/api', description: 'Real-time stock, forex, crypto, company fundamentals, news, and alternative market data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Finance', source: 'curated', sourceWeight: 5 },
+  { name: 'Stooq', url: 'https://stooq.com/db/h/', description: 'Free historical stock quotes, daily prices, forex, indices, and CSV market data downloads.', auth: 'No', https: true, cors: 'Unknown', category: 'Finance', source: 'curated', sourceWeight: 5 },
   { name: 'Open-Meteo', url: 'https://open-meteo.com/en/docs', description: 'Free weather forecast, historical weather, climate, geocoding, and marine weather APIs.', auth: 'No', https: true, cors: 'Yes', category: 'Weather', source: 'curated', sourceWeight: 5 },
   { name: 'National Weather Service API', url: 'https://www.weather.gov/documentation/services-web-api', description: 'US weather alerts, forecasts, observations, radar stations, and gridpoint weather data.', auth: 'No', https: true, cors: 'Yes', category: 'Weather', source: 'curated', sourceWeight: 5 },
   { name: 'Pirate Weather', url: 'https://pirateweather.net/en/latest/', description: 'Weather forecast API compatible with Dark Sky-style forecast data.', auth: 'No', https: true, cors: 'Yes', category: 'Weather', source: 'curated', sourceWeight: 5 },
@@ -169,6 +188,8 @@ const CURATED_APIS = [
   { name: 'The Guardian Open Platform', url: 'https://open-platform.theguardian.com/', description: 'Guardian articles, sections, tags, search, and content API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'News', source: 'curated', sourceWeight: 5 },
   { name: 'TMDb', url: 'https://developer.themoviedb.org/docs', description: 'Movie and TV metadata, ratings, posters, images, actors, and discovery.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Entertainment', source: 'curated', sourceWeight: 5 },
   { name: 'OMDb', url: 'https://www.omdbapi.com/', description: 'Movie and TV metadata by IMDb ID or title.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Entertainment', source: 'curated', sourceWeight: 5 },
+  { name: 'iTunes Search API', url: 'https://performance-partners.apple.com/search-api', description: 'No-auth podcast, music, audiobook, movie, app, and episode search metadata from Apple/iTunes.', auth: 'No', https: true, cors: 'Unknown', category: 'Media', source: 'curated', sourceWeight: 5 },
+  { name: 'Listen Notes', url: 'https://www.listennotes.com/api/docs/', description: 'Podcast search, episodes, shows, RSS metadata, recommendations, and podcast directory API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Podcasts', source: 'curated', sourceWeight: 5 },
   { name: 'OpenStreetMap Nominatim', url: 'https://nominatim.org/release-docs/latest/api/Overview/', description: 'OpenStreetMap geocoding and reverse geocoding API.', auth: 'No', https: true, cors: 'Yes', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
   { name: 'Mapbox', url: 'https://docs.mapbox.com/api/', description: 'Maps, geocoding, routing, navigation, tiles, and location APIs.', auth: 'apiKey', https: true, cors: 'Yes', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
   { name: 'USAJOBS', url: 'https://developer.usajobs.gov/', description: 'US federal government job listings and hiring data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Jobs', source: 'curated', sourceWeight: 5 },
@@ -181,13 +202,18 @@ const CURATED_APIS = [
   { name: 'Open Food Facts', url: 'https://world.openfoodfacts.org/data', description: 'Food product database with barcodes, ingredients, nutrition, and labels.', auth: 'No', https: true, cors: 'Yes', category: 'Food', source: 'curated', sourceWeight: 5 },
   { name: 'Stripe', url: 'https://docs.stripe.com/api', description: 'Payments, checkout, billing, invoices, subscriptions, and customer payment methods API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Payments', source: 'curated', sourceWeight: 5, openapiUrl: 'https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json' },
   { name: 'PayPal', url: 'https://developer.paypal.com/api/rest/', description: 'Payments, checkout orders, invoices, subscriptions, payouts, and disputes API.', auth: 'OAuth', https: true, cors: 'Unknown', category: 'Payments', source: 'curated', sourceWeight: 5 },
+  { name: 'Twilio Messaging', url: 'https://www.twilio.com/docs/messaging/api', description: 'SMS, MMS, WhatsApp, messaging services, message status, phone numbers, and text sending API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Communication', source: 'curated', sourceWeight: 5, openapiUrl: 'https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/json/twilio_api_v2010.json' },
   { name: 'Abstract Email Validation', url: 'https://www.abstractapi.com/email-verification-validation-api', description: 'Email validation, deliverability, typo detection, MX records, and disposable email checks.', auth: 'apiKey', https: true, cors: 'Yes', category: 'Email', source: 'curated', sourceWeight: 5 },
   { name: 'IPinfo', url: 'https://ipinfo.io/developers', description: 'IP geolocation, ASN, company, carrier, privacy, and hosted domains data.', auth: 'No', https: true, cors: 'Unknown', category: 'Geocoding', source: 'curated', sourceWeight: 5 },
   { name: 'IPQualityScore', url: 'https://www.ipqualityscore.com/documentation/proxy-detection-api/overview', description: 'IP reputation, VPN, proxy, TOR, bot, fraud score, privacy, and threat detection API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Security', source: 'curated', sourceWeight: 5 },
   { name: 'proxycheck.io', url: 'https://proxycheck.io/api/', description: 'IP proxy, VPN, TOR, datacenter, ASN, risk, and privacy detection API.', auth: 'No', https: true, cors: 'Unknown', category: 'Security', source: 'curated', sourceWeight: 5 },
   { name: 'Free Dictionary API', url: 'https://dictionaryapi.dev/', description: 'Free dictionary definitions, phonetics, pronunciations, parts of speech, meanings, and examples.', auth: 'No', https: true, cors: 'Yes', category: 'Dictionaries', source: 'curated', sourceWeight: 5 },
+  { name: 'Open Library', url: 'https://openlibrary.org/developers/api', description: 'Books, authors, ISBN lookup, covers, works, editions, subjects, and public library metadata.', auth: 'No', https: true, cors: 'Yes', category: 'Books', source: 'curated', sourceWeight: 5 },
+  { name: 'Gutendex', url: 'https://gutendex.com/', description: 'Project Gutenberg public domain books, authors, subjects, languages, formats, and ebook metadata.', auth: 'No', https: true, cors: 'Yes', category: 'Books', source: 'curated', sourceWeight: 5 },
   { name: 'spoonacular', url: 'https://spoonacular.com/food-api/docs', description: 'Recipes, ingredients, meal planning, nutrition, grocery products, and food ontology API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Food & Drink', source: 'curated', sourceWeight: 5 },
   { name: 'OpenAQ', url: 'https://docs.openaq.org/', description: 'Open air quality measurements, locations, sensors, pollutants, and environmental monitoring data.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Environment', source: 'curated', sourceWeight: 5 },
+  { name: 'UK Carbon Intensity', url: 'https://carbon-intensity.github.io/api-definitions/', description: 'Carbon intensity, electricity generation mix, grid emissions, forecasts, and regional energy data.', auth: 'No', https: true, cors: 'Unknown', category: 'Environment', source: 'curated', sourceWeight: 5 },
+  { name: 'Electricity Maps', url: 'https://portal.electricitymaps.com/docs/getting-started', description: 'Electricity grid carbon intensity, power production, emissions, and regional energy mix API.', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Environment', source: 'curated', sourceWeight: 5 },
   { name: 'Frankfurter', url: 'https://www.frankfurter.app/docs', description: 'Currency exchange rates, conversion, historical rates, and time series data from ECB.', auth: 'No', https: true, cors: 'Yes', category: 'Currency Exchange', source: 'curated', sourceWeight: 5 },
   { name: 'Currency-api', url: 'https://github.com/fawazahmed0/currency-api#readme', description: 'Free currency exchange rates API with many currencies, no auth, and CDN-hosted JSON endpoints.', auth: 'No', https: true, cors: 'Yes', category: 'Currency Exchange', source: 'curated', sourceWeight: 5 },
   { name: 'Nager.Date', url: 'https://date.nager.at/Api', description: 'Public holidays by country and year, long weekends, country info, and calendar date data.', auth: 'No', https: true, cors: 'Yes', category: 'Calendar', source: 'curated', sourceWeight: 5 },

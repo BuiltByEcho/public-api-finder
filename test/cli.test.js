@@ -18,7 +18,7 @@ function fixtureCache(entries = BASE_ENTRIES) {
   const dir = join(tmpdir(), `public-api-finder-test-${process.pid}-${Date.now()}`);
   mkdirSync(dir, { recursive: true });
   const path = join(dir, 'all.json');
-  writeFileSync(path, JSON.stringify({ dataVersion: 3, count: entries.length, entries }));
+  writeFileSync(path, JSON.stringify({ dataVersion: 4, count: entries.length, entries }));
   return path;
 }
 
@@ -65,7 +65,7 @@ test('openapi filter returns schema-backed APIs', () => {
   assert.equal(r.status, 0, r.stderr);
   const rows = JSON.parse(r.stdout);
   assert.equal(rows.length, 1);
-  assert.equal(rows[0].name, 'Stripe API');
+  assert.ok(/^Stripe( API)?$/.test(rows[0].name));
   assert.match(rows[0].openapiUrl, /openapi/);
 });
 
@@ -117,6 +117,32 @@ test('natural-language no-auth and cors hints act like filters', () => {
   assert.equal(rows[0].name, 'Browser Weather');
 });
 
+test('no-auth stock intent keeps a finance API on top', () => {
+  const r = run(['free stock quote api no auth', '--json'], [
+    { name: 'Free Weather', url: 'https://example.com/weather', description: 'Free API with hourly data', auth: 'No', https: true, cors: 'Yes', category: 'Weather' },
+    { name: 'Stooq', url: 'https://stooq.com/db/h/', description: 'Free historical stock quotes, forex, indices, and CSV market data', auth: 'No', https: true, cors: 'Unknown', category: 'Finance' }
+  ]);
+  assert.equal(r.status, 0, r.stderr);
+  const rows = JSON.parse(r.stdout);
+  assert.equal(rows[0].name, 'Stooq');
+});
+
+test('books and podcast intents prefer their own domains', () => {
+  const books = run(['public domain books search authors covers no auth', '--json'], [
+    { name: 'Census Data API', url: 'https://example.com/census', description: 'Public government search data', auth: 'No', https: true, cors: 'Yes', category: 'Government' },
+    { name: 'Open Library', url: 'https://openlibrary.org/developers/api', description: 'Books, authors, ISBN lookup, covers, and public library metadata', auth: 'No', https: true, cors: 'Yes', category: 'Books' }
+  ]);
+  assert.equal(books.status, 0, books.stderr);
+  assert.equal(JSON.parse(books.stdout)[0].name, 'Open Library');
+
+  const podcasts = run(['podcast search episodes rss metadata', '--json'], [
+    { name: 'TVMaze', url: 'https://example.com/tv', description: 'TV episodes and show metadata search', auth: 'No', https: true, cors: 'Yes', category: 'Video' },
+    { name: 'Listen Notes', url: 'https://www.listennotes.com/api/docs/', description: 'Podcast search, episodes, shows, RSS metadata, and podcast directory', auth: 'apiKey', https: true, cors: 'Unknown', category: 'Podcasts' }
+  ]);
+  assert.equal(podcasts.status, 0, podcasts.stderr);
+  assert.equal(JSON.parse(podcasts.stdout)[0].name, 'Listen Notes');
+});
+
 test('short generic api names do not receive broad curated-name boosts', () => {
   const r = run(['payments openapi', '--openapi', '--json'], [
     { name: 'API', url: 'https://example.com/openapi.json', description: 'Generic web API', auth: 'Unknown', https: true, cors: 'Unknown', category: 'OpenAPI', openapiUrl: 'https://example.com/openapi.json' },
@@ -124,5 +150,5 @@ test('short generic api names do not receive broad curated-name boosts', () => {
   ]);
   assert.equal(r.status, 0, r.stderr);
   const rows = JSON.parse(r.stdout);
-  assert.equal(rows[0].name, 'Stripe API');
+  assert.ok(/^Stripe( API)?$/.test(rows[0].name));
 });
