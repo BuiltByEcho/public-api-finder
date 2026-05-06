@@ -1,6 +1,6 @@
 {
   "name": "public-api-finder",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Find free/public APIs for agents and prototypes.",
   "type": "module",
   "bin": {
@@ -10,6 +10,8 @@
     "src/",
     "scripts/",
     "skills/",
+    "x402/",
+    "bankr.x402.json",
     "README.md",
     "LICENSE"
   ],

@@ -47,6 +47,45 @@ The skill tells agents to prefer the CLI first, then live-check docs/endpoints b
 --refresh          Refresh cache
 ```
 
+## Bankr x402 endpoint
+
+This repo includes a Bankr x402 Cloud endpoint scaffold at:
+
+```text
+x402/public-api-finder/index.ts
+bankr.x402.json
+```
+
+It is configured as a paid `POST` endpoint at **$0.01 USDC per successful request** on Base. Deploy it with Bankr when ready:
+
+```bash
+bankr x402 deploy public-api-finder
+```
+
+The endpoint accepts:
+
+```json
+{
+  "query": "weather forecast no auth cors",
+  "limit": 5,
+  "noAuth": true,
+  "https": true,
+  "cors": "Yes"
+}
+```
+
+Suggested Bankr App prompt after deployment:
+
+```text
+Build me a public app called Public API Finder. It should have a search box,
+filters for no-auth, HTTPS, CORS, category, and result limit, and a green
+button labeled “Pay $0.01 & Pull”. When clicked, call my x402 endpoint
+https://x402.bankr.bot/<my-wallet>/public-api-finder with bankr.x402.fetch,
+show the Bankr payment confirmation, then render ranked API cards with name,
+category, auth, CORS, URL, score, and description. Make it public/unlisted so
+I can share it with the Bankr team.
+```
+
 ## Hosted app / Bankr-ready credits
 
 The package also includes a tiny zero-dependency hosted API and landing page:

@@ -1,0 +1,38 @@
+{
+  "network": "base",
+  "currency": "USDC",
+  "services": {
+    "public-api-finder": {
+      "price": "0.01",
+      "currency": "USDC",
+      "network": "base",
+      "methods": ["POST"],
+      "paymentScheme": "exact",
+      "description": "Find and rank free/public APIs for agents and app builders from a natural-language query.",
+      "schema": {
+        "input": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string", "description": "Natural-language API need, e.g. weather forecast no auth cors" },
+            "limit": { "type": "number", "description": "Max results, 1-20" },
+            "category": { "type": "string", "description": "Optional category substring" },
+            "noAuth": { "type": "boolean", "description": "Only return APIs with no auth/key requirement" },
+            "https": { "type": "boolean", "description": "Only return HTTPS APIs" },
+            "cors": { "type": "string", "description": "Filter CORS value: Yes, No, Unknown" }
+          },
+          "required": ["query"]
+        },
+        "output": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string" },
+            "price": { "type": "string" },
+            "charged": { "type": "boolean" },
+            "resultCount": { "type": "number" },
+            "results": { "type": "array" }
+          }
+        }
+      }
+    }
+  }
+}
