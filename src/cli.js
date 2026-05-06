@@ -12,7 +12,7 @@ const SOURCES = {
 };
 const CACHE_PATH = process.env.PUBLIC_API_FINDER_CACHE || join(homedir(), '.cache', 'public-api-finder', 'all.json');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const DATA_VERSION = 12;
+const DATA_VERSION = 13;
 
 const ENRICHMENT_FIELDS = [
   'tags',
@@ -591,6 +591,10 @@ function enrichCuratedApi(api) {
 }
 
 const ENRICHED_CURATED_APIS = CURATED_APIS.map(enrichCuratedApi);
+
+export function getCuratedApis() {
+  return ENRICHED_CURATED_APIS.map(api => ({ ...api, tags: [...(api.tags || [])], domains: [...(api.domains || [])], useCases: [...(api.useCases || [])] }));
+}
 
 function compactName(value) { return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
 const KNOWN_BEST_NAMES = new Map(ENRICHED_CURATED_APIS.map(api => [compactName(api.name), 15]));

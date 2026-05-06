@@ -18,7 +18,7 @@ function fixtureCache(entries = BASE_ENTRIES) {
   const dir = join(tmpdir(), `public-api-finder-test-${process.pid}-${Date.now()}`);
   mkdirSync(dir, { recursive: true });
   const path = join(dir, 'all.json');
-  writeFileSync(path, JSON.stringify({ dataVersion: 12, count: entries.length, entries }));
+  writeFileSync(path, JSON.stringify({ dataVersion: 13, count: entries.length, entries }));
   return path;
 }
 
@@ -88,6 +88,16 @@ test('source filter narrows results', () => {
   assert.match(r.stdout, /Stripe API/);
 });
 
+
+
+
+test('every curated API has at least one searchable tag', async () => {
+  const { getCuratedApis } = await import('../src/cli.js');
+  const apis = getCuratedApis();
+  assert.ok(apis.length >= 100);
+  const missing = apis.filter(api => !Array.isArray(api.tags) || api.tags.length === 0);
+  assert.deepEqual(missing.map(api => api.name), []);
+});
 
 test('finance intent does not rank generic quote APIs above finance APIs', () => {
   const r = run(['stock quotes', '--json']);
