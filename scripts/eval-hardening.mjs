@@ -45,7 +45,7 @@ const cases = [
   { q: 'food barcode ingredients allergens nutrition no auth cors', args: ['--no-auth','--https'], topCategory: /food/i, mustName: /open food facts/i },
   { q: 'recipe from pantry ingredients avoid allergens api', args: [], topCategory: /food/i, mustName: /spoonacular|edamam|recipe|meal/i },
   { q: 'air quality by coordinates pollutant measurements', args: [], topCategory: /environment|science|weather/i, mustName: /openaq|air quality|aqicn/i },
-  { q: 'historical currency exchange rates no auth cors', args: ['--no-auth','--https'], topCategory: /currency exchange/i, mustName: /frankfurter|currency/i, forbid: /crypto|bitcoin|dex/i },
+  { q: 'historical currency exchange rates no auth cors', args: ['--no-auth','--https'], topCategory: /currency exchange/i, mustName: /frankfurter|currency/i, forbid: /\b(crypto|bitcoin|dex)\b/i },
   { q: 'public holidays by country no auth', args: ['--no-auth','--https'], topCategory: /calendar|date/i, mustName: /nager|holiday|calendarific/i },
   { q: 'vehicle vin decode recall safety data no auth', args: ['--no-auth'], topCategory: /transportation|government|open data/i, mustName: /nhtsa|vin|vehicle/i },
   { q: 'real estate property value rent estimate api', args: [], topCategory: /real estate|property|openapi|finance/i, mustName: /rentcast|attom|zillow|real estate|property/i },

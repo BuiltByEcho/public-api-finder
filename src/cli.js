@@ -13,7 +13,7 @@ const SOURCES = {
 };
 const CACHE_PATH = process.env.PUBLIC_API_FINDER_CACHE || join(homedir(), '.cache', 'public-api-finder', 'all.json');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const DATA_VERSION = 16;
+const DATA_VERSION = 17;
 
 const ENRICHMENT_FIELDS = [
   'tags',
@@ -747,7 +747,17 @@ function applyQueryHints(args) {
   if (!args.cors && /\b(cors|frontend-safe|browser-safe|frontend safe|browser safe)\b/.test(query)) args.cors = 'Yes';
 }
 
-const SEARCH_STOPWORDS = new Set(['a', 'an', 'and', 'api', 'apis', 'for', 'from', 'in', 'no', 'of', 'on', 'or', 'the', 'to', 'with']);
+const SEARCH_STOPWORDS = new Set(['a', 'an', 'and', 'api', 'apis', 'auth', 'cors', 'for', 'from', 'in', 'key', 'no', 'of', 'on', 'or', 'the', 'to', 'with', 'yes']);
+
+
+function normalizeSearchQuery(query) {
+  return String(query || '')
+    .replace(/\b(no auth|without auth|no api key|no key|unauthenticated)\b/gi, ' ')
+    .replace(/\b(cors|cors yes|frontend-safe|browser-safe|frontend safe|browser safe|https)\b/gi, ' ')
+    .replace(/\b(api|apis)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 function tokenSet(text) {
   return new Set(String(text).toLowerCase().match(/[a-z0-9]+/g)?.filter(t => t.length > 1 && !SEARCH_STOPWORDS.has(t)) || []);
@@ -852,10 +862,11 @@ function intentPenalty(entry, queryText) {
   if (/\b(school district|school boundary|district boundary|reverse geocoding|maps routing|routing api|open data demographics|demographics|census data)\b/.test(queryText) && /\b(linkedin|jobs scraper|lead|sales|recruiting|amazon product scraper|tiktok profile scraper)\b/.test(text)) {
     penalty += 120;
   }
-  if (/\b(stock|stocks|stock quote|stock prices|equity|equities|ticker|tickers)\b/.test(queryText) && !/finance|financial|stock|stocks|equity|ticker|market data|portfolio|stooq|finnhub|polygon|alpha vantage|twelve data/.test(text)) {
+  const stockIntent = /\b(stock|stocks|stock quote|stock prices|equity|equities|ticker|tickers)\b/.test(queryText) && !/\b(not stocks?|not stock|non stocks?|non stock)\b/.test(queryText);
+  if (stockIntent && !/finance|financial|stock|stocks|equity|ticker|market data|portfolio|stooq|finnhub|polygon|alpha vantage|twelve data/.test(text)) {
     penalty += 80;
   }
-  if (/\b(stock|stocks|stock quote|stock prices|equity|equities|ticker|tickers)\b/.test(queryText) && /\b(quotable|joke|entertainment|food|weather|test data|placeholder)\b/.test(text)) {
+  if (stockIntent && /\b(quotable|joke|entertainment|food|weather|test data|placeholder)\b/.test(text)) {
     penalty += 140;
   }
   if (/\bcrypto\b/.test(queryText) && /\bnot stocks?\b/.test(queryText) && /\b(finance|financial|stock|stocks|equity|ticker|portfolio|stooq|finnhub|polygon|sec edgar|predscope|valueray|econdb)\b/.test(text)) {
@@ -878,6 +889,16 @@ function intentPenalty(entry, queryText) {
   }
   if (/\b(joke api|jokes?|memes?)\b/.test(queryText) && !/joke|meme|quote/.test(text)) {
     penalty += 70;
+  }
+
+  if (/\b(crypto|cryptocurrency|dex|orderbook)\b/.test(queryText) && /\b(currency exchange|frankfurter|national bank|vatcomply|exchange rates only|fiat)\b/.test(text) && !/\b(crypto|cryptocurrency|dex|token|blockchain|defi|coinpaprika|0x)\b/.test(text)) {
+    penalty += 160;
+  }
+  if (/\b(oauth|login|auth|authentication|passwordless)\b/.test(queryText) && /\b(calendar|holiday|nameday|nager|non-working days|food|weather|crypto|stock)\b/.test(text) && !/\b(auth|oauth|openid|login|identity|passwordless)\b/.test(text)) {
+    penalty += 140;
+  }
+  if (/\b(medical diagnosis|diagnosis|clinical|symptom checker)\b/.test(queryText) && /\b(food|crypto|currency|weather|joke|tv|geocoding|zippopotam)\b/.test(text) && !/\b(medical|health|clinical|diagnosis|symptom|fhir)\b/.test(text)) {
+    penalty += 180;
   }
 
   if (!cat.includes('cryptocurrency') && /\b(wallet address|identicon|avatar|profile picture)\b/.test(queryText) && /\b(avatar|identicon|profile picture)\b/.test(text)) {
@@ -1137,8 +1158,38 @@ function sourceMatches(entry, source) {
   return (entry.sources || [entry.source]).some(s => String(s).toLowerCase() === source.toLowerCase());
 }
 
+
+function passesIntentGate(entry, queryText) {
+  const text = `${entry.name || ''} ${entry.category || ''} ${entry.description || ''} ${enrichedText(entry)}`.toLowerCase();
+  if (/\b(currency exchange|exchange rates|fiat exchange|forex rates)\b/.test(queryText) && !/\bcrypto|bitcoin|dex|token\b/.test(queryText)) {
+    if (/\bcurrency exchange\b/.test(String(entry.category || '').toLowerCase())) return true;
+    if (/\b(frankfurter|national bank|vatcomply)\b/.test(String(entry.name || '').toLowerCase())) return true;
+    if (/\b(crypto|crypto-currencies|cryptocurrency|stocks?|portfolio optimizer|econdb)\b/.test(text)) return false;
+    return /\b(currency conversion|forex rates)\b/.test(text);
+  }
+  if (/\b(stock|stocks|stock quote|stock prices|equity|equities|ticker|tickers)\b/.test(queryText) && !/\b(not stocks?|not stock|non stocks?|non stock)\b/.test(queryText)) {
+    return /\b(finance|financial|currency exchange)\b/.test(String(entry.category || '').toLowerCase())
+      || /\b(stooq|portfolio optimizer|alpha vantage|finnhub|polygon|twelve data|sec edgar|econdb|tradier|predscope|valueray)\b/.test(text);
+  }
+  if (/\b(oauth|openid|passwordless|magic link)\b/.test(queryText) || /\blogin\b.*\b(auth|users?)\b/.test(queryText)) {
+    return /\b(authentication|security)\b/.test(String(entry.category || '').toLowerCase())
+      || /\b(auth0|clerk|stytch|magic|oauth|openid|identity|passwordless|social auth|login)\b/.test(text);
+  }
+  if (/\b(medical diagnosis|diagnosis|clinical|symptom checker)\b/.test(queryText)) {
+    return /\b(medical|health|clinical|diagnosis|symptom|fhir)\b/.test(text);
+  }
+  if (/\b(crypto|cryptocurrency|dex|orderbook)\b/.test(queryText) && !/\b(not crypto|non crypto|fiat only)\b/.test(queryText)) {
+    if (!/\bcryptocurrency\b/.test(String(entry.category || '').toLowerCase()) && /\b(finance|financial|currency exchange)\b/.test(String(entry.category || '').toLowerCase())) return false;
+    return /\b(crypto|cryptocurrency|dex|defi|token|blockchain|coin|coinpaprika|0x|dexpaprika|geckoterminal|dexscreener)\b/.test(text);
+  }
+  return true;
+}
+
 function filterEntries(entries, args) {
-  const q = tokenSet(args.query);
+  const queryText = String(args.query || '').toLowerCase();
+  const searchText = normalizeSearchQuery(args.query);
+  const q = tokenSet(searchText);
+  if (args.noAuth && (/\b(oauth|openid|passwordless|magic link)\b/.test(queryText) || /\blogin\b.*\b(auth|users?)\b/.test(queryText))) return [];
   return entries.flatMap(e => {
     if (args.category && !String(e.category || '').toLowerCase().includes(args.category.toLowerCase())) return [];
     if (args.source && !sourceMatches(e, args.source)) return [];
@@ -1146,13 +1197,15 @@ function filterEntries(entries, args) {
     if (args.https && !e.https) return [];
     if (args.openapi && !e.openapiUrl) return [];
     if (args.cors && String(e.cors || '').toLowerCase() !== args.cors.toLowerCase()) return [];
+    if (q.size && !passesIntentGate(e, queryText)) return [];
     const matched = q.size ? textScore(e, q) : 1;
     const domain = q.size ? domainAdjustment(e, q) : 0;
-    const targeted = q.size ? targetedBoost(e, args.query.toLowerCase()) : 0;
+    const targeted = q.size ? targetedBoost(e, queryText) : 0;
     if (q.size && matched === 0 && domain <= 0 && targeted <= 0) return [];
-    const s = q.size ? score(e, q, args.query.toLowerCase()) : 1;
+    let s = q.size ? score(e, q, searchText.toLowerCase()) : 1;
     if (q.size && s <= 0) return [];
-    return [{ ...e, score: s + (e.sourceWeight || 0) }];
+    const finalScore = s + (e.sourceWeight || 0);
+    return [{ ...e, score: finalScore }];
   }).sort((a, b) => b.score - a.score || String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name))).slice(0, args.limit);
 }
 
