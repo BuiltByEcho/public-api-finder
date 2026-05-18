@@ -42,3 +42,13 @@ Recommend 2-5 APIs. Include:
 Prefer APIs that are HTTPS-enabled, no-auth or simple API key, CORS `Yes` for frontend demos, well documented, and narrowly suited to the task.
 
 The curated list is not a production-readiness guarantee. Always verify before building around an API. Use `--check` for a quick live reachability check, but still inspect docs, terms, auth, and rate limits before committing to an integration.
+
+## Bankr x402 endpoint
+
+The current BuiltByEcho production x402 endpoint is:
+
+```text
+https://x402.bankr.bot/0x2a16625fad3b0d840ac02c7c59edea3781e340ae/public-api-finder
+```
+
+Endpoint owner account: `builtbyecho@agentmail.to`.

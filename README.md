@@ -62,6 +62,12 @@ It is configured as a paid `POST` endpoint at **$0.01 USDC per successful reques
 bankr x402 deploy public-api-finder
 ```
 
+Current BuiltByEcho production endpoint:
+
+```text
+https://x402.bankr.bot/0x2a16625fad3b0d840ac02c7c59edea3781e340ae/public-api-finder
+```
+
 The endpoint accepts:
 
 ```json
@@ -80,7 +86,7 @@ Suggested Bankr App prompt after deployment:
 Build me a public app called Public API Finder. It should have a search box,
 filters for no-auth, HTTPS, CORS, category, and result limit, and a green
 button labeled “Pay $0.01 & Pull”. When clicked, call my x402 endpoint
-https://x402.bankr.bot/<my-wallet>/public-api-finder with bankr.x402.fetch,
+https://x402.bankr.bot/0x2a16625fad3b0d840ac02c7c59edea3781e340ae/public-api-finder with bankr.x402.fetch,
 show the Bankr payment confirmation, then render ranked API cards with name,
 category, auth, CORS, URL, score, and description. Make it public/unlisted so
 I can share it with the Bankr team.
