@@ -1,0 +1,39 @@
+{
+  "name": "public-api-finder",
+  "version": "0.3.2",
+  "description": "Find free/public APIs for agents and prototypes.",
+  "type": "module",
+  "bin": {
+    "public-api-finder": "src/cli.js"
+  },
+  "files": [
+    "src/",
+    "skills/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "public-api",
+    "apis",
+    "cli",
+    "skills"
+  ],
+  "author": "BuiltByEcho",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BuiltByEcho/public-api-finder.git",
+    "directory": "packages/public-api-finder"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
