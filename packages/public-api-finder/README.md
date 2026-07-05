@@ -21,6 +21,19 @@ npx --yes --package=public-api-finder -- public-api-finder "payments" --openapi
 
 Agents often waste time wandering the web for APIs. This gives them a small, predictable first stop: search a curated list, filter by auth/HTTPS/CORS, then verify the chosen API docs before coding.
 
+## Fits in the Echo agent toolchain
+
+Use `public-api-finder` when an agent needs a data source for a prototype, bot, dashboard, or demo. It narrows the search space quickly, then the agent should still live-check the selected API docs before writing integration code.
+
+This is the discovery layer for Echo builds that need outside data without starting from a blind web search.
+
+## Refresh smoke
+
+```bash
+npm test
+npm pack --dry-run --json
+```
+
 ## Skill
 
 The package includes an agent skill at:

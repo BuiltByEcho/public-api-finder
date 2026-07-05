@@ -21,7 +21,10 @@
     "public-api",
     "apis",
     "cli",
-    "skills"
+    "skills",
+    "builtbyecho",
+    "agent-tooling",
+    "developer-tools"
   ],
   "author": "BuiltByEcho",
   "license": "MIT",
